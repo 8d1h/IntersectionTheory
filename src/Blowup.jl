@@ -200,51 +200,18 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   # 4) the points are the same
   push!(rels, fˣ(Y.point.f) - jₓ(X.point))
   
-  # 5) relations due to dimension
-  # here we just add powers of E[j] so that the ideal becomes 0-dimensional
-  # below we will use kbase to further trim all the terms of degree > Y.dim
-  for j in 1:n
-    push!(rels, E[j]^Int(ceil((Y.dim+1)//degs[j])))
-  end
-  
-  AˣY⁺ = ChRing(RY⁺, vcat(degs, AˣY.w), Ideal(RY⁺, rels...), :variety_dim => Y.dim)
-  trim!(AˣY⁺)
+  AˣY⁺ = ChRing(RY⁺, vcat(degs, AˣY.w), Ideal(RY⁺, rels...))
   Y⁺ = AbsVariety(Y.dim, AˣY⁺)
+  # trim!(Y⁺.ring) TODO is this necessary?
   fₓ = map_from_func(x -> error("not defined"), Y⁺.ring, Y.ring)
   f = AbsVarietyHom(Y⁺, Y, Y⁺.(y), fₓ)
   Y⁺.struct_map = f
   Y⁺.T = pullback(f, Y.T)
-  f.T = AbsSheaf(Y⁺, Y⁺(0)) # there is no relative tangent bundle
+  f.T = AbsBundle(Y⁺, Y⁺(0)) # there is no relative tangent bundle
   Y⁺.point = simplify(f.pullback(Y.point))
   if isdefined(Y, :O1) Y⁺.O1 = f.pullback(Y.O1) end
   jˣ = vcat(X.(x) .* c, [i.pullback(f) for f in gens(AˣY)])
   j_ = map_from_func(x -> Y⁺(jₓ(x)), X.ring, Y⁺.ring)
   j = AbsVarietyHom(X, Y⁺, jˣ, j_)
   return j
-end
-
-# add all the relations due to dimension
-function trim!(R::ChRing)
-  d = get_special(R, :variety_dim)
-  gs = gens(Singular.kbase(R.I))
-  # here we assume that I is homogeneous
-  R.I = std(R.I + Ideal(R.R, filter(x -> total_degree(R(x)) > d, gs)...))
-end
-
-###############################################################################
-# remove this XXX
-function _test()
-  A = ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [1,1,1,1])
-  
-  # B = ChRing(PolynomialRing(Singular.QQ, ["s","t"])[1], [1,1])
-  # s, t = gens(B.R)
-  # f = ChAlgHom(A, B, B.([s^3,s^2*t,s*t^2,t^3]))
-   
-  B = ChRing(PolynomialRing(Singular.QQ, ["s","t","u"])[1], [1,1,1])
-  s, t, u = gens(B.R)
-  f = ChAlgHom(A, B, B.([s^4+u,s*t^2*u,s^2-t^2-u^2,t]))
-  
-  M, g, pf = _pushfwd(f)
-  x = s^3+5s*t+t^20+20t*u
-  g' * f.salg.(pf(x)) == x
 end

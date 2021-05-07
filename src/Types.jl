@@ -1,7 +1,7 @@
 # generic types
-abstract type Sheaf end
-Base.parent(F::Sheaf) = F.parent
-rank(F::Sheaf) = F.rank
+abstract type Bundle end
+Base.parent(F::Bundle) = F.parent
+rank(F::Bundle) = F.rank
 
 abstract type Variety end
 dim(X::Variety) = X.dim
@@ -10,7 +10,7 @@ abstract type VarietyHom end
 domain(X::VarietyHom) = X.domain
 codomain(X::VarietyHom) = X.codomain
 
-Base.show(io::IO, F::Sheaf) = print(io, "$(typeof(F).name.name) of rank $(F.rank) on $(F.parent)")
+Base.show(io::IO, F::Bundle) = print(io, "$(typeof(F).name.name) of rank $(F.rank) on $(F.parent)")
 Base.show(io::IO, X::Variety) = print(io, "$(typeof(X).name.name) of dim $(X.dim)")
 Base.show(io::IO, f::VarietyHom) = print(io, "$(typeof(f).name.name) from $(f.domain) to $(f.codomain)")
 
@@ -129,6 +129,15 @@ function total_degree(x::ChRingElem)
   max([R.w' * Singular.degrees(t) for t in Singular.terms(f)]...)
 end
 
+function ishomogeneous(x::ChRingElem)
+  R, f = x.parent, x.f
+  if isdefined(R, :I)
+    f = Singular.reduce(f, R.I) end
+  f == 0 && return true
+  degs = [R.w' * Singular.degrees(t) for t in Singular.terms(f)]
+  all(d -> d==degs[1], degs)
+end
+
 div(x::ChRingElem, y::ChRingElem) = (
   (x, y) = _coerce(x, y);
   x = simplify(x); y = simplify(y);
@@ -167,12 +176,51 @@ function _homog_comps(I::UnitRange, x::ChRingElem)
   ans
 end
 
+
 function simplify(x::ChRingElem)
   R = x.parent
   n = get_special(R, :variety_dim)
   # no dimension restriction
   n === nothing && return isdefined(R, :I) ? R(Singular.reduce(x.f, R.I)) : x
   # otherwise keep only terms in degree ≤ n
+  n < 0 && return R(0)
   return sum(_homog_comps(0:n, x))
 end
 
+# add all the relations to a Chow ring due to dimension
+function trim!(R::ChRing)
+  d = get_special(R, :variety_dim)
+  if isdefined(R, :I)
+    gI = gens(R.I)
+    # check that I is homogeneous, using the weights of R
+    @assert all(g -> ishomogeneous(R(g)), gI)
+  else
+    gI = Singular.spoly[]
+  end
+  if !isdefined(R, :I) || Singular.dimension(R.I) > 0 
+    # add powers of variables so that the ideal becomes 0-dimensional
+    # below we will use kbase to further trim all the terms of degree > dim
+    for (i,x) in enumerate(gens(R.R))
+      push!(gI, x^Int(ceil((d+1)//R.w[i])))
+    end
+  end
+  b = gens(Singular.kbase(std(Ideal(R.R, gI...))))
+  R.I = std(Ideal(R.R, vcat(gI, filter(x -> total_degree(R(x)) > d, b))...))
+  return R
+end
+
+function add_vars(R::ChRing, n::Int; w::Vector{Int}=Int[], symbol::String="x")
+  base = base_ring(R.R)
+  syms = string.(gens(R.R))
+  if length(w) == 0 w = repeat([1], n) end
+  Rx, x = PolynomialRing(base, vcat(_parse_symbol(symbol, 1:n), syms))
+  toRx = Singular.AlgebraHomomorphism(R.R, Rx, x[n+1:end])
+  isdefined(R, :I) && return ChRing(Rx, vcat(w, R.w), Ideal(Rx, toRx.(gens(R.I))))
+  return ChRing(Rx, vcat(w, R.w))
+end
+
+function add_rels!(R::ChRing, rels::Vector{Singular.spoly{T}}) where T
+  @assert all(g -> parent(g) == R.R, rels)
+  R.I = isdefined(R, :I) ? std(R.I + Ideal(R.R, rels)) : std(Ideal(R.R, rels))
+  return R
+end

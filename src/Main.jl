@@ -2,20 +2,20 @@ abstract type AbsVarietyT <: Variety end
 
 ###############################################################################
 #
-# AbsSheaf
+# AbsBundle
 #
-mutable struct AbsSheaf{V <: AbsVarietyT} <: Sheaf
+mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
   parent::V
   rank::Union{Int, RingElem}
   ch::ChRingElem
   chern::ChRingElem
-  function AbsSheaf(X::V, ch::RingElem) where V <: AbsVarietyT
-    AbsSheaf(X, X.ring(ch))
+  function AbsBundle(X::V, ch::RingElem) where V <: AbsVarietyT
+    AbsBundle(X, X.ring(ch))
   end
-  function AbsSheaf(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT
-    AbsSheaf(X, r, X.ring(c))
+  function AbsBundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT
+    AbsBundle(X, r, X.ring(c))
   end
-  function AbsSheaf(X::V, ch::ChRingElem) where V <: AbsVarietyT
+  function AbsBundle(X::V, ch::ChRingElem) where V <: AbsVarietyT
     ch = simplify(ch)
     r = constant_coefficient(ch.f)
     try r = Int(Singular.ZZ(Singular.QQ(r)))
@@ -23,38 +23,38 @@ mutable struct AbsSheaf{V <: AbsVarietyT} <: Sheaf
     end
     new{V}(X, r, ch)
   end
-  function AbsSheaf(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT
+  function AbsBundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT
     new{V}(X, r, r + _logg(c), c)
   end
 end
-sheaf(X::V, ch::RingElem) where V <: AbsVarietyT = AbsSheaf(X, ch)
-sheaf(X::V, ch::ChRingElem) where V <: AbsVarietyT = AbsSheaf(X, ch)
-sheaf(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT = AbsSheaf(X, r, c)
-sheaf(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsSheaf(X, r, c)
+bundle(X::V, ch::RingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
+bundle(X::V, ch::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
+bundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
+bundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
 
-==(F::AbsSheaf, G::AbsSheaf) = F.ch == G.ch
+==(F::AbsBundle, G::AbsBundle) = F.ch == G.ch
 
-ch(F::AbsSheaf) = F.ch
-chern(F::AbsSheaf) = (
+ch(F::AbsBundle) = F.ch
+chern(F::AbsBundle) = (
   if !isdefined(F, :chern) F.chern = _expp(F.ch) end;
   F.chern)
-chern(n::Int, F::AbsSheaf) = chern(F)[n]
-ctop(F::AbsSheaf) = chern(F.rank, F)
-segre(F::AbsSheaf) = inv(chern(F))
-segre(n::Int, F::AbsSheaf) = segre(F)[n]
-todd(F::AbsSheaf) = _todd(F.ch)
+chern(n::Int, F::AbsBundle) = chern(F)[n]
+ctop(F::AbsBundle) = chern(F.rank, F)
+segre(F::AbsBundle) = inv(chern(F))
+segre(n::Int, F::AbsBundle) = segre(F)[n]
+todd(F::AbsBundle) = _todd(F.ch)
 
-function pontryagin(F::AbsSheaf)
+function pontryagin(F::AbsBundle)
   n = F.parent.dim
   x = chern(F) * chern(dual(F))
   comps = x[0:n]
   sum([(-1)^i*comps[2i+1] for i in 0:n÷2])
 end
 
-pontryagin(n::Int, F::AbsSheaf) = pontryagin(F)[2n]
+pontryagin(n::Int, F::AbsBundle) = pontryagin(F)[2n]
 
-chi(F::AbsSheaf) = integral(F.ch * todd(F.parent)) # Hirzebruch-Riemann-Roch
-chi(F::AbsSheaf, G::AbsSheaf) = begin
+chi(F::AbsBundle) = integral(F.ch * todd(F.parent)) # Hirzebruch-Riemann-Roch
+chi(F::AbsBundle, G::AbsBundle) = begin
   F, G = _coerce(F, G)
   integral(dual(F).ch * G.ch * todd(F.parent))
 end
@@ -70,25 +70,30 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
   pullback::ChAlgHom
   pushforward::FunctionalMap
   O1::ChRingElem
-  T::AbsSheaf{V1}
+  T::AbsBundle{V1}
   function AbsVarietyHom(X::V1, Y::V2, fˣ::ChAlgHom, fₓ=nothing) where {V1 <: AbsVarietyT, V2 <: AbsVarietyT}
-    if fₓ === nothing && get_special(X, :point) !== nothing && isdefined(Y, :point)
-      fₓ = x -> integral(x) * Y.point
-      fₓ = map_from_func(fₓ, X.ring, Y.ring)
-    end
-    if fₓ === nothing && isdefined(X, :point) && isdefined(Y, :point)
+    if !(fₓ isa FunctionalMap) && isdefined(X, :point) && isdefined(Y, :point)
+      # pushforward can be deduced from pullback in the following cases
+      # - explicitly specified (f is relatively algebraic)
+      # - X is a point
+      # - Y is a point or a curve
+      # - all algebraic classes for Y are known
+      f_is_alg = fₓ == :alg || dim(X) == 0 || dim(Y) ≤ 1 || get_special(Y, :alg) !== nothing
       b = basis(Y)
       d = dual_basis(Y)
       fₓ = x -> (
-	if dim(Y) >= 2 && get_special(Y, :alg) === nothing
+	if !f_is_alg
 	  @warn "assuming that all algebraic classes are known for\n$Y\notherwise the result may be wrong" end;
 	sum(integral(x*fˣ(y))*d[i] for (i, y) in enumerate(b)))
       fₓ = map_from_func(fₓ, X.ring, Y.ring)
     end
     f = new{V1, V2}(X, Y, X.dim-Y.dim, fˣ)
-    if fₓ !== nothing f.pushforward = fₓ end
+    try
+      f.pushforward = fₓ
+    catch
+    end
     if isdefined(X, :T) && isdefined(Y, :T)
-      f.T = AbsSheaf(X, X.T.ch - fˣ(Y.T.ch))
+      f.T = AbsBundle(X, X.T.ch - fˣ(Y.T.ch))
     end
     return f
   end
@@ -108,8 +113,8 @@ cotangent_bundle(f::AbsVarietyHom) = dual(f.T)
 todd(f::AbsVarietyHom) = todd(f.T)
 pullback(f::AbsVarietyHom, x::ChRingElem) = f.pullback(x)
 pushforward(f::AbsVarietyHom, x::ChRingElem) = f.pushforward(x)
-pullback(f::AbsVarietyHom, F::AbsSheaf) = AbsSheaf(f.domain, f.pullback(F.ch))
-pushforward(f::AbsVarietyHom, F::AbsSheaf) = AbsSheaf(f.codomain, f.pushforward(F.ch * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
+pullback(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.domain, f.pullback(F.ch))
+pushforward(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.codomain, f.pushforward(F.ch * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
 
 function identity_hom(X::V) where V <: AbsVarietyT
   AbsVarietyHom(X, X, X.(gens(X.ring.R)), map_from_func(identity, X.ring, X.ring))
@@ -136,8 +141,8 @@ mutable struct AbsVariety <: AbsVarietyT
   base::Ring
   point::ChRingElem
   O1::ChRingElem
-  T::AbsSheaf
-  bundles::Vector{AbsSheaf}
+  T::AbsBundle
+  bundles::Vector{AbsBundle}
   struct_map::AbsVarietyHom
   @declare_other
   function AbsVariety(n::Int, R::ChRing)
@@ -145,6 +150,7 @@ mutable struct AbsVariety <: AbsVarietyT
     X = new(n, R, base)
     set_special(R, :variety => X)
     set_special(R, :variety_dim => n)
+    # trim!(R) # TODO add an option to allow disabling it
     return X
   end
 end
@@ -162,9 +168,9 @@ function variety(n::Int, bundles::Vector{Pair{Int,T}}; base::Ring=Singular.QQ) w
   degs = vcat([collect(1:r) for (r,s) in bundles]...)
   X = variety(n, symbols, degs, base=base)[1]
   i = 1
-  X.bundles = AbsSheaf[]
+  X.bundles = AbsBundle[]
   for (r,s) in bundles
-    push!(X.bundles, AbsSheaf(X, r, 1 + sum(gens(X.ring)[i:i+r-1])))
+    push!(X.bundles, AbsBundle(X, r, 1 + sum(gens(X.ring)[i:i+r-1])))
     i += r
   end
   return X, X.bundles
@@ -180,9 +186,9 @@ end
 
 (X::AbsVariety)(f::Union{Scalar, RingElem}) = simplify(X.ring(f))
 
-OO(X::AbsVariety) = AbsSheaf(X, X(1))
-OO(X::AbsVariety, n::Scalar) = AbsSheaf(X, 1, 1+n*X.O1)
-OO(X::AbsVariety, D::ChRingElem) = AbsSheaf(X, 1, 1+D[1])
+OO(X::AbsVariety) = AbsBundle(X, X(1))
+OO(X::AbsVariety, n::Scalar) = AbsBundle(X, 1, 1+n*X.O1)
+OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1+D[1])
 degree(X::AbsVariety) = integral(X.O1^X.dim)
 tangent_bundle(X::AbsVariety) = X.T
 cotangent_bundle(X::AbsVariety) = dual(X.T)
@@ -216,7 +222,7 @@ function chern_number(X::AbsVariety, λ::Vector{Int})
 end
 function chern_numbers(X::AbsVariety)
   c = chern(X)[1:X.dim]
-  [integral(prod([c[i] for i in λ])) for λ in partitions(X.dim)]
+  [λ => integral(prod([c[i] for i in λ])) for λ in partitions(X.dim)]
 end
 
 for g in [:a_hat_genus, :l_genus]
@@ -234,7 +240,8 @@ end
 
 signature(X::AbsVariety) = l_genus(X) # Hirzebruch signature theorem
 
-function hilbert_polynomial(F::AbsSheaf)
+function hilbert_polynomial(F::AbsBundle)
+  !isdefined(F.parent, :O1) && error("no polarization is specified for the variety")
   X, O1 = F.parent, F.parent.O1
   # first coerce the coefficient ring to QQ then extend to QQ(t)
   Qt, (t,) = FunctionField(Singular.QQ, ["t"])
@@ -255,11 +262,9 @@ function hilbert_polynomial(F::AbsSheaf)
 end
 hilbert_polynomial(X::AbsVariety) = hilbert_polynomial(OO(X))
 
-# find canonicallly defined morphisms from X to Y
-function hom(X::AbsVariety, Y::AbsVariety)
+# find canonicallly defined morphism from X to Y
+function _hom(X::AbsVariety, Y::AbsVariety)
   X == Y && return identity_hom(X)
-  get_special(Y, :point) !== nothing && return hom(X, Y, [X(1)]) # Y is a point
-  get_special(X, :point) !== nothing && return hom(X, Y, repeat([X(0)], length(gens(Y.ring)))) # X is a point
   # first handle the case where X is a (fibered) product
   projs = get_special(X, :projections)
   if projs !== nothing
@@ -276,6 +281,12 @@ function hom(X::AbsVariety, Y::AbsVariety)
     X == Y && return reduce(*, homs)
   end
   error("no canonical homomorphism between the given varieties")
+end
+# morphisms for points are convenient, but are not desired when doing coercion
+function hom(X::AbsVariety, Y::AbsVariety)
+  get_special(Y, :point) !== nothing && return hom(X, Y, [X(0)]) # Y is a point
+  get_special(X, :point) !== nothing && return hom(X, Y, repeat([X(0)], length(gens(Y.ring)))) # X is a point
+  _hom(X, Y)
 end
 →(X::AbsVariety, Y::AbsVariety) = hom(X, Y)
 
@@ -310,7 +321,7 @@ end
 
 ###############################################################################
 #
-# Operators on AbsSheaf
+# Operators on AbsBundle
 #
 function adams(k::Int, x::ChRingElem)
   R = x.parent
@@ -319,23 +330,23 @@ function adams(k::Int, x::ChRingElem)
   sum([ZZ(k)^i*comps[i+1] for i in 0:n])
 end
 
-function dual(F::AbsSheaf)
-  AbsSheaf(F.parent, adams(-1, F.ch))
+function dual(F::AbsBundle)
+  AbsBundle(F.parent, adams(-1, F.ch))
 end
-+(n::Union{Scalar,RingElem}, F::AbsSheaf) = AbsSheaf(F.parent, n + F.ch)
-*(n::Union{Scalar,RingElem}, F::AbsSheaf) = AbsSheaf(F.parent, n * F.ch)
-+(F::AbsSheaf, n::Union{Scalar,RingElem}) = n + F
-*(F::AbsSheaf, n::Union{Scalar,RingElem}) = n * F
--(F::AbsSheaf) = AbsSheaf(F.parent, -F.ch)
-det(F::AbsSheaf) = AbsSheaf(F.parent, 1, 1 + F.ch[1])
-function _coerce(F::AbsSheaf, G::AbsSheaf)
++(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n + F.ch)
+*(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n * F.ch)
++(F::AbsBundle, n::Union{Scalar,RingElem}) = n + F
+*(F::AbsBundle, n::Union{Scalar,RingElem}) = n * F
+-(F::AbsBundle) = AbsBundle(F.parent, -F.ch)
+det(F::AbsBundle) = AbsBundle(F.parent, 1, 1 + F.ch[1])
+function _coerce(F::AbsBundle, G::AbsBundle)
   X, Y = F.parent, G.parent
   X == Y && return F, G
   try
-    return F, pullback(X → Y, G)
+    return F, pullback(_hom(X, Y), G)
   catch
     try
-      return pullback(Y → X, F), G
+      return pullback(_hom(Y, X), F), G
     catch
       error("the sheaves are not on compatible varieties")
     end
@@ -343,33 +354,33 @@ function _coerce(F::AbsSheaf, G::AbsSheaf)
 end
 
 for O in [:(+), :(-), :(*)]
-  @eval ($O)(F::AbsSheaf, G::AbsSheaf) = (
+  @eval ($O)(F::AbsBundle, G::AbsBundle) = (
     (F, G) = _coerce(F, G);
-    AbsSheaf(F.parent, $O(F.ch, G.ch)))
+    AbsBundle(F.parent, $O(F.ch, G.ch)))
 end
-hom(F::AbsSheaf, G::AbsSheaf) = dual(F) * G
+hom(F::AbsBundle, G::AbsBundle) = dual(F) * G
 
-function exterior_power(k::Int, F::AbsSheaf)
-  AbsSheaf(F.parent, _wedge(k, F.ch)[end])
-end
-
-function exterior_power(F::AbsSheaf)
-  AbsSheaf(F.parent, sum([(-1)^(i-1) * w for (i, w) in enumerate(_wedge(F.rank, F.ch))]))
+function exterior_power(k::Int, F::AbsBundle)
+  AbsBundle(F.parent, _wedge(k, F.ch)[end])
 end
 
-function symmetric_power(k::Int, F::AbsSheaf)
-  AbsSheaf(F.parent, _sym(k, F.ch)[end])
+function exterior_power(F::AbsBundle)
+  AbsBundle(F.parent, sum([(-1)^(i-1) * w for (i, w) in enumerate(_wedge(F.rank, F.ch))]))
 end
 
-function symmetric_power(k::Scalar, F::AbsSheaf)
+function symmetric_power(k::Int, F::AbsBundle)
+  AbsBundle(F.parent, _sym(k, F.ch)[end])
+end
+
+function symmetric_power(k::Scalar, F::AbsBundle)
   X = F.parent
   PF = proj(dual(F))
   p = PF.struct_map
-  AbsSheaf(X, p.pushforward(sum((OO(PF, k).ch * todd(p))[0:PF.dim])))
+  AbsBundle(X, p.pushforward(sum((OO(PF, k).ch * todd(p))[0:PF.dim])))
 end
 
-function schur_functor(λ::Vector{Int}, F::AbsSheaf) schur_functor(Partition(λ), F) end
-function schur_functor(λ::Partition, F::AbsSheaf)
+function schur_functor(λ::Vector{Int}, F::AbsBundle) schur_functor(Partition(λ), F) end
+function schur_functor(λ::Partition, F::AbsBundle)
   λ = conj(λ)
   X = F.parent
   w = _wedge(sum(λ), F.ch)
@@ -377,9 +388,9 @@ function schur_functor(λ::Partition, F::AbsSheaf)
   e = i -> (i < 0) ? S(0) : ei[i+1]
   M = [e(λ[i]-i+j) for i in 1:length(λ), j in 1:length(λ)]
   sch = det(Nemo.matrix(S, M)) # Jacobi-Trudi
-  AbsSheaf(X, X(sch([wi.f for wi in w]...)))
+  AbsBundle(X, X(sch([wi.f for wi in w]...)))
 end
-function giambelli(λ::Vector{Int}, F::AbsSheaf)
+function giambelli(λ::Vector{Int}, F::AbsBundle)
   R = F.parent.ring
   M = [chern(λ[i]-i+j, F).f for i in 1:length(λ), j in 1:length(λ)]
   R(det(Nemo.matrix(R.R, M)))
@@ -558,7 +569,7 @@ for (g,s) in [:a_hat_genus=>"p", :l_genus=>"p", :todd=>"c"]
   end
 end
 
-function section_zero_locus(F::AbsSheaf; class::Bool=false)
+function section_zero_locus(F::AbsBundle; class::Bool=false)
   X = F.parent
   R = X.ring
   cZ = ctop(F)
@@ -576,7 +587,7 @@ function section_zero_locus(F::AbsSheaf; class::Bool=false)
     Z.point = Z(inv(degp) * p.f)
   end
   if isdefined(X, :T)
-    Z.T = AbsSheaf(Z, Z((X.T.ch - F.ch).f))
+    Z.T = AbsBundle(Z, Z((X.T.ch - F.ch).f))
   end
   if isdefined(X, :O1)
     Z.O1 = simplify(Z(X.O1.f))
@@ -592,7 +603,7 @@ end
 complete_intersection(P::AbsVariety, degs::Int...) = complete_intersection(P, collect(degs))
 complete_intersection(P::AbsVariety, degs::Vector{Int}) = section_zero_locus(sum(OO(P, d) for d in degs))
 
-function degeneracy_locus(k::Int, F::AbsSheaf, G::AbsSheaf; class::Bool=false)
+function degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle; class::Bool=false)
   F, G = _coerce(F, G)
   m, n = rank(F), rank(G)
   @assert k < min(m,n)
@@ -604,7 +615,7 @@ function degeneracy_locus(k::Int, F::AbsSheaf, G::AbsSheaf; class::Bool=false)
       return F.parent.ring(0)
     end
   end
-  Gr = (m-k == 1) ? proj(F) : flag(F, m-k, m)
+  Gr = (m-k == 1) ? proj(F) : flag(m-k, F)
   S = Gr.bundles[1]
   D = section_zero_locus(dual(S) * G)
   D.struct_map = D → F.parent # skip the flag variety
@@ -620,7 +631,7 @@ function point(; base::Ring=Singular.QQ)
   I = Ideal(R, [p])
   pt = AbsVariety(0, ChRing(R, [1], I))
   pt.point = pt(1)
-  pt.T = AbsSheaf(pt, pt(0))
+  pt.T = AbsBundle(pt, pt(0))
   pt.O1 = pt(0)
   set_special(pt, :description => "Point")
   set_special(pt, :point => true)
@@ -636,9 +647,9 @@ function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   P.O1 = P(h)
   chTP = R(n)
   for i in 1:n chTP += ZZ(n+1)//factorial(ZZ(i))*h^i end
-  P.T = AbsSheaf(P, chTP)
+  P.T = AbsBundle(P, chTP)
   P.T.chern = P((1+h)^(n+1))
-  S = AbsSheaf(P, 1, 1-h)
+  S = AbsBundle(P, 1, 1-h)
   Q = OO(P)*(n+1) - S
   P.bundles = [S, Q]
   P.struct_map = hom(P, point(base=base), [P(1)])
@@ -648,9 +659,9 @@ function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   return P
 end
 
-function proj(F::AbsSheaf; symbol::String="h")
+function proj(F::AbsBundle; symbol::String="h")
   X, r = F.parent, F.rank
-  !isa(r, Int) && error("expect rank to be an integer")
+  !(r isa Int) && error("expect rank to be an integer")
   R = X.ring
   syms = vcat([symbol], string.(gens(R.R)))
   # construct the ring
@@ -669,7 +680,7 @@ function proj(F::AbsSheaf; symbol::String="h")
   if isdefined(X, :point) PF.point = p.pullback(X.point) * h^(r-1) end
   p.O1 = PF(h)
   PF.O1 = PF(h)
-  S = AbsSheaf(PF, 1, 1-h)
+  S = AbsBundle(PF, 1, 1-h)
   Q = pullback(p, F) - S
   p.T = dual(S)*Q
   if isdefined(X, :T) PF.T = pullback(p, X.T) + p.T end
@@ -696,7 +707,7 @@ function abs_grassmannian(k::Int, n::Int; base::Ring=Singular.QQ, symbol::String
   AˣGr.I = std(Ideal(R, [x.f for x in AˣGr(cQ)[n-k+1:n]]))
   Gr = AbsVariety(d, AˣGr)
   Gr.O1 = Gr(-c[1])
-  S = AbsSheaf(Gr, k, 1+sum(c))
+  S = AbsBundle(Gr, k, 1+sum(c))
   Q = OO(Gr)*n - S
   Gr.point = Gr((-1)^d*c[end]^(n-k))
   Gr.T = dual(S) * Q
@@ -734,7 +745,7 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   rels = [Nemo.coeff(mod(x^n, g), i) for i in 0:n-1]
   AˣFl.I = std(Ideal(R, rels))
   Fl = AbsVariety(d, AˣFl)
-  Fl.bundles = [AbsSheaf(Fl, r, ci) for (r,ci) in zip(ranks, c)]
+  Fl.bundles = [AbsBundle(Fl, r, ci) for (r,ci) in zip(ranks, c)]
   Fl.O1 = simplify(sum((i-1)*chern(1, Fl.bundles[i]) for i in 1:l))
   Fl.point = prod(ctop(E)^sum(dims[i]) for (i,E) in enumerate(Fl.bundles[2:end]))
   Fl.T = sum(dual(Fl.bundles[i]) * sum([Fl.bundles[j] for j in i+1:l]) for i in 1:l-1)
@@ -745,10 +756,10 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   return Fl
 end
 
-function flag(k::Int, F::AbsSheaf; symbol::String="c") flag([k], F, symbol=symbol) end
-function flag(dims::Vector{Int}, F::AbsSheaf; symbol::String="c")
+function flag(k::Int, F::AbsBundle; symbol::String="c") flag([k], F, symbol=symbol) end
+function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   X, n = F.parent, F.rank
-  !isa(n, Int) && error("expect rank to be an integer")
+  !(n isa Int) && error("expect rank to be an integer")
   # compute the ranks and relative dim
   l = length(dims)
   ranks = pushfirst!([dims[i+1]-dims[i] for i in 1:l-1], dims[1])
@@ -764,7 +775,7 @@ function flag(dims::Vector{Int}, F::AbsSheaf; symbol::String="c")
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]..., string.(gens(R.R)))
   R1 = PolynomialRing(X.base, syms)[1]
   pback = x -> x(gens(R1)[n+1:end]...)
-  pfwd = y -> y(vcat(repeat([R.R(0)], n), gens(R.R)))
+  pfwd = y -> y(vcat(repeat([R.R(0)], n), gens(R.R))...)
   AˣFl = ChRing(R1, vcat([collect(1:r) for r in ranks]..., R.w), :variety_dim => X.dim+d)
   # compute the relations
   c = pushfirst!([1+sum(gens(R1)[dims[i]+1:dims[i+1]]) for i in 1:l-1], 1+sum(gens(R1)[1:dims[1]]))
@@ -777,7 +788,7 @@ function flag(dims::Vector{Int}, F::AbsSheaf; symbol::String="c")
   if isdefined(R, :I) rels = vcat(pback.(gens(R.I)), rels) end
   AˣFl.I = std(Ideal(R1, rels))
   Fl = AbsVariety(X.dim + d, AˣFl)
-  Fl.bundles = [AbsSheaf(Fl, r, ci) for (r,ci) in zip(ranks, c)]
+  Fl.bundles = [AbsBundle(Fl, r, ci) for (r,ci) in zip(ranks, c)]
   section = prod(ctop(E)^sum(dims[i]) for (i, E) in enumerate(Fl.bundles[2:end]))
   pˣ = Fl.(gens(R1)[n+1:end])
   # TODO needs the block ordering to get the correct result

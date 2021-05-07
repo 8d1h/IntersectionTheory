@@ -7,7 +7,7 @@ struct TnRep
   w::Vector
   function TnRep(w::Vector{W}) where W
     # be sure to use fmpz to avoid overflow
-    W == Int && return new(length(w), [ZZ(wi) for wi in w])
+    W == Int && return new(length(w), ZZ.(w))
     new(length(w), w)
   end
 end
@@ -44,7 +44,7 @@ end
 # large examples, since otherwise we may run into memory problems.
 abstract type TnVarietyT{P} <: Variety end
 
-mutable struct TnBundle{P, V <: TnVarietyT{P}} <: Sheaf
+mutable struct TnBundle{P, V <: TnVarietyT{P}} <: Bundle
   parent::V
   rank::Int
   loc::Function
@@ -80,7 +80,7 @@ symmetric_power(k::Int, F::TnBundle) = TnBundle(F.parent, binomial(F.rank+k-1, k
 exterior_power(k::Int, F::TnBundle) = TnBundle(F.parent, binomial(F.rank, k), p -> exterior_power(k, F.loc(p)))
 
 # we want the same syntax `integral(chern(F))` as in Schubert calculus
-# the following ad hoc type represents a formal expressions in chern classes of a bundle F
+# the following ad hoc type represents a formal expression in chern classes of a bundle F
 struct TnBundleChern
   F::TnBundle
   c::ChRingElem
@@ -139,8 +139,8 @@ end
 function _parse_weight(n::Int, w)
   w == :int && return ZZ.(collect(1:n))
   w == :poly && return Nemo.PolynomialRing(QQ, ["u$i" for i in 1:n])[2]
-  if isa(w, UnitRange) w = collect(w) end
-  isa(w, Vector) && length(w) == n && return w
+  if (w isa UnitRange) w = collect(w) end
+  w isa Vector && length(w) == n && return w
   error("incorrect specification for weights")
 end
 

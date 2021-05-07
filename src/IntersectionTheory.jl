@@ -16,20 +16,22 @@ import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt
 
 export Nemo, Singular
-export QQ, FunctionField # QQ is Nemo.QQ
-export proj, grassmannian, flag, point, variety, sheaf
+export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ
+export proj, grassmannian, flag, point, variety, bundle
 export pullback, pushforward, hom
 export tangent_bundle, cotangent_bundle, canonical_bundle, canonical_class
 export exterior_power, symmetric_power, det, schur_functor
 export dim, degree, rank, basis, basis_by_degree, intersection_matrix
 export simplify, inv, gens, domain, codomain, betti
-export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop
+export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop, pontryagin
 export chern_number, chern_numbers, l_genus, a_hat_genus, signature
 export hilbert_polynomial #, todd_polynomial
 export section_zero_locus, complete_intersection, degeneracy_locus
 export schubert_class, schubert_classes
 export →
 export blowup
+export trim!
+export cubics, matrix_moduli
 
 include("Types.jl")
 include("Misc.jl")
@@ -37,5 +39,6 @@ include("Misc.jl")
 include("Bott.jl")   # integration using Bott's formula
 include("Main.jl")   # basic constructions for Schubert calculus
 include("Blowup.jl") # blowup
+include("Moduli.jl") # moduli of matrices, twisted cubics
 
 end
