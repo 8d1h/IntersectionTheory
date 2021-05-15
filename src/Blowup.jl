@@ -15,36 +15,38 @@ function _pushfwd(f::ChAlgHom)
   symsA, symsB = string.(gens(A.R)), string.(gens(B.R))
   a, b = length(symsA), length(symsB)
   # the ring for the graph of f
-  R, ba = PolynomialRing(base, vcat(symsB, symsA), ordering=:lex)
-  xA, xB = ba[b+1:end], ba[1:b]
-  aa = vcat(repeat([A.R()], b), gens(A.R))
-  toA = x -> simplify(A(x(aa...))).f
+  ord = ordering_dp(b) * ordering_dp(a)
+  R, ba = PolynomialRing(base, vcat(symsB, symsA), ordering=ord)
+  AtoR = Singular.AlgebraHomomorphism(A.R, R, ba[b+1:end])
+  BtoR = Singular.AlgebraHomomorphism(B.R, R, ba[1:b])
+  RtoA = Singular.AlgebraHomomorphism(R, A.R, vcat(repeat([A.R()], b), gens(A.R)))
   I = std(Ideal(B.R, isdefined(B, :I) ? vcat(gens(B.I), M) : M))
   Singular.dimension(I) > 0 && error("not a finite algebra extension")
   gensB = gens(Singular.kbase(I)) # generators of B as A-module
   @assert gensB[end] == 1 # the last one should always be 1
   g = length(gensB)
-  gensB_lift = [R(g(xB...)) for g in gensB]
+  gensB_lift = [R(BtoR(g)) for g in gensB]
   # compute the ideal J of the graph of f
-  rels = [R(xA[i]-m(xB...)) for (i,m) in enumerate(M)]
-  if isdefined(A, :I) for g in gens(A.I) push!(rels, R(g(xA...))) end end
-  if isdefined(B, :I) for g in gens(B.I) push!(rels, R(g(xB...))) end end
+  rels = [R(ba[b+i]-BtoR(m)) for (i,m) in enumerate(M)]
+  if isdefined(A, :I) for g in gens(A.I) push!(rels, R(AtoR(g))) end end
+  if isdefined(B, :I) for g in gens(B.I) push!(rels, R(BtoR(g))) end end
   J = std(Ideal(R, rels)) # the ideal of the graph of f
-  pf = x -> (y = Singular.reduce(R(x(xB...)), J);
+  pf = x -> (y = Singular.reduce(R(BtoR(x)), J);
 	     ans = Nemo.elem_type(A.R)[];
 	     for i in 1:g
 	       q = div(y, gensB_lift[i])
-	       push!(ans, toA(q))
-	       y = y - q * gensB_lift[i]
+	       push!(ans, RtoA(q))
+	       y -= q * gensB_lift[i]
 	     end; ans)
   F = Singular.FreeModule(R, g)
   gB = [F(push!([j == i ? R(1) : R() for j in 1:g-1], -gensB_lift[i])) for i in 1:g-1]
+  # XXX this is not very efficient: too many columns
   gJ = [F([j==i ? x : R() for j in 1:g]) for x in gens(J) for i in 1:g]
   P = std(Singular.Module(R, vcat(gJ, gB)...)) # the presentation matrix, as an R-module
   # use a new weight to do elimination
   Rw = ChRing(R, vcat(repeat([1], b), repeat([0], a)))
   inA = x -> total_degree(Rw(x)) == 0
-  M = hcat([(toA.(Array(P[i]))) for i in 1:Singular.ngens(P) if all(inA, Array(P[i]))]...)
+  M = hcat([(RtoA.(Array(P[i]))) for i in 1:Singular.ngens(P) if all(inA, Array(P[i]))]...)
   return M, gensB, pf
 end
 
@@ -69,6 +71,13 @@ end
 # and we have jˣE[end] = -ζ
 # the projection formula gives jₓ(gˣx ⋅ ζᵏ) = jₓ(gˣx) ⋅ (-E[end])ᵏ
 #
+@doc Markdown.doc"""
+    blowup(i::AbsVarietyHom)
+
+Construct the blowup $\mathrm{Bl}_XY$ of an inclusion $i:X\hookrightarrow Y$.
+
+Return the variety $\mathrm{Bl}$ and the exceptional divisor $E$.
+"""
 function blowup(i::AbsVarietyHom; symbol::String="E")
   X, Y = i.domain, i.codomain
   N = -i.T # normal bundle
@@ -115,23 +124,26 @@ function blowup(i::AbsVarietyHom; symbol::String="E")
   AˣBl = ChRing(RBl, vcat(degs, AˣY.w), Ideal(RBl, rels...))
   Bl = AbsVariety(Y.dim, AˣBl)
   # Bl being constructed, we add the morphisms f, g, and j
+  RBltoRY = Singular.AlgebraHomomorphism(RBl, RY, vcat(repeat([RY()], n), gens(RY)))
   fₓ = x -> (xf = simplify(x).f;
-	     Y(xf(vcat(repeat([RY(0)], n), gens(RY))...));)
+	     Y(RBltoRY(xf));)
   fₓ = map_from_func(fₓ, Bl.ring, Y.ring)
   f = AbsVarietyHom(Bl, Y, Bl.(y), fₓ)
   Bl.struct_map = f
-  if isdefined(Y, :point) Bl.point = simplify(f.pullback(Y.point)) end
+  if isdefined(Y, :point) Bl.point = f.pullback(Y.point) end
   PN = proj(N) # the exceptional divisor as the projectivization of N
   g = PN.struct_map
   ζ = g.O1
   jˣ = vcat([-ζ * g.pullback(X(xi)) for xi in x], [g.pullback(i.pullback(f)) for f in gens(AˣY)])
   # pushforward of j: write as a polynomial in ζ, and compute term by term
+  RX = X.ring.R
+  RPNtoRX = Singular.AlgebraHomomorphism(PN.ring.R, RX, pushfirst!(gens(RX), RX()))
   jₓ = x -> (xf = simplify(x).f;
 	     RX = X.ring.R; ans = RBl();
 	     for k in d-1:-1:0
 	       q = div(xf, ζ.f^k)
-	       ans += jₓgˣ(X(q(RX(), gens(RX)...))) * (-E[end])^k
-	       xf = xf - q * ζ.f^k
+	       ans += jₓgˣ(X(RPNtoRX(q))) * (-E[end])^k
+	       xf -= q * ζ.f^k
 	     end; Bl(ans))
   jₓ = map_from_func(jₓ, PN.ring, Bl.ring)
   j = AbsVarietyHom(PN, Bl, jˣ, jₓ)
@@ -144,7 +156,6 @@ function blowup(i::AbsVarietyHom; symbol::String="E")
   # chern(Bl.T) can be readily computed from its Chern character, but the following is faster
   α = sum(sum((binomial(ZZ(d-j), ZZ(k)) - binomial(ZZ(d-j), ZZ(k+1))) * ζ^k for k in 0:d-j) * g.pullback(chern(j, N)) for j in 0:d)
   Bl.T.chern = simplify(f.pullback(chern(Y.T)) + j.pushforward(g.pullback(chern(X.T)) * α))
-  PN.struct_map = j
   set_special(PN, :projections => [j, g])
   set_special(Bl, :exceptional_divisor => PN)
   return Bl, PN
@@ -198,7 +209,9 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   end
   
   # 4) the points are the same
-  push!(rels, fˣ(Y.point.f) - jₓ(X.point))
+  if isdefined(X, :point) && isdefined(Y, :point)
+    push!(rels, fˣ(Y.point.f) - jₓ(X.point))
+  end
   
   AˣY⁺ = ChRing(RY⁺, vcat(degs, AˣY.w), Ideal(RY⁺, rels...))
   Y⁺ = AbsVariety(Y.dim, AˣY⁺)
@@ -208,7 +221,7 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   Y⁺.struct_map = f
   Y⁺.T = pullback(f, Y.T)
   f.T = AbsBundle(Y⁺, Y⁺(0)) # there is no relative tangent bundle
-  Y⁺.point = simplify(f.pullback(Y.point))
+  Y⁺.point = f.pullback(Y.point)
   if isdefined(Y, :O1) Y⁺.O1 = f.pullback(Y.O1) end
   jˣ = vcat(X.(x) .* c, [i.pullback(f) for f in gens(AˣY)])
   j_ = map_from_func(x -> Y⁺(jₓ(x)), X.ring, Y⁺.ring)

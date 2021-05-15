@@ -4,6 +4,11 @@ abstract type AbsVarietyT <: Variety end
 #
 # AbsBundle
 #
+@doc Markdown.doc"""
+    AbsBundle(X::AbsVariety, ch::ChRingElem)
+    AbsBundle(X::AbsVariety, r, c::ChRingElem)
+The type of an abstract bundle.
+"""
 mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
   parent::V
   rank::Union{Int, RingElem}
@@ -27,6 +32,12 @@ mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
     new{V}(X, r, r + _logg(c), c)
   end
 end
+@doc Markdown.doc"""
+    bundle(X::AbsVariety, ch)
+    bundle(X::AbsVariety, r, c)
+Construct a bundle on $X$ by specifying its Chern character, or its rank and
+total Chern class.
+"""
 bundle(X::V, ch::RingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
 bundle(X::V, ch::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
 bundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
@@ -34,16 +45,49 @@ bundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, 
 
 ==(F::AbsBundle, G::AbsBundle) = F.ch == G.ch
 
+@doc Markdown.doc"""    ch(F::AbsBundle)
+Return the Chern character."""
 ch(F::AbsBundle) = F.ch
+
+@doc Markdown.doc"""
+    chern(F::AbsBundle)
+    chern(F::TnBundle)
+Compute the total Chern class.
+"""
 chern(F::AbsBundle) = (
   if !isdefined(F, :chern) F.chern = _expp(F.ch) end;
   F.chern)
-chern(n::Int, F::AbsBundle) = chern(F)[n]
+
+@doc Markdown.doc"""
+    chern(k::Int, F::AbsBundle)
+    chern(k::Int, F::TnBundle)
+Compute the $k$-th Chern class.
+"""
+chern(k::Int, F::AbsBundle) = (
+  isdefined(F, :chern) && return chern(F)[k];
+  _expp(F.ch, truncate=k)[k])
+
+@doc Markdown.doc"""
+    ctop(F::AbsBundle)
+    ctop(F::TnBundle)
+Compute the top Chern class.
+"""
 ctop(F::AbsBundle) = chern(F.rank, F)
+
+@doc Markdown.doc"""    segre(F::AbsBundle)
+Compute the total Segre class."""
 segre(F::AbsBundle) = inv(chern(F))
-segre(n::Int, F::AbsBundle) = segre(F)[n]
+
+@doc Markdown.doc"""    segre(k::Int, F::AbsBundle)
+Compute the $k$-th Segre class."""
+segre(k::Int, F::AbsBundle) = segre(F)[k]
+
+@doc Markdown.doc"""    todd(F::AbsBundle)
+Compute the Todd class."""
 todd(F::AbsBundle) = _todd(F.ch)
 
+@doc Markdown.doc"""    pontryagin(F::AbsBundle)
+Compute the total Pontryagin class."""
 function pontryagin(F::AbsBundle)
   n = F.parent.dim
   x = chern(F) * chern(dual(F))
@@ -51,8 +95,16 @@ function pontryagin(F::AbsBundle)
   sum([(-1)^i*comps[2i+1] for i in 0:n÷2])
 end
 
-pontryagin(n::Int, F::AbsBundle) = pontryagin(F)[2n]
+@doc Markdown.doc"""    pontryagin(k::Int, F::AbsBundle)
+Compute the $k$-th Pontryagin class."""
+pontryagin(k::Int, F::AbsBundle) = pontryagin(F)[2k]
 
+@doc Markdown.doc"""
+    chi(F::AbsBundle)
+    chi(F::AbsBundle, G::AbsBundle)
+Compute the holomorphic Euler characteristic $\chi(F)$, or the Euler pairing
+$\chi(F,G)$.
+"""
 chi(F::AbsBundle) = integral(F.ch * todd(F.parent)) # Hirzebruch-Riemann-Roch
 chi(F::AbsBundle, G::AbsBundle) = begin
   F, G = _coerce(F, G)
@@ -63,6 +115,11 @@ end
 #
 # AbsVarietyHom
 #
+@doc Markdown.doc"""
+    AbsVarietyHom(X::AbsVariety, Y::AbsVariety, fˣ::ChAlgHom, fₓ)
+    AbsVarietyHom(X::AbsVariety, Y::AbsVariety, fˣ::Vector, fₓ)
+The type of an abstract variety morphism.
+"""
 mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
   domain::V1
   codomain::V2
@@ -102,23 +159,63 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
     AbsVarietyHom(X, Y, fˣ, fₓ)
   end
 end
-function hom(X::V1, Y::V2, l::Vector, fₓ=nothing; inclusion::Bool = false) where {V1 <: AbsVarietyT, V2 <: AbsVarietyT}
+
+@doc Markdown.doc"""
+    hom(X::AbsVariety, Y::AbsVariety, l::Vector, fₓ=nothing; inclusion::Bool=false)
+
+Construct a variety morphism from $X$ to $Y$.
+
+Use the argument `inclusion=true` to declare that the morphism is an inclusion.
+A copy of $Y$ will be created, with extra classes added so that one can
+pushforward classes on $X$.
+"""
+function hom(X::V1, Y::V2, l::Vector, fₓ=nothing; inclusion::Bool=false, symbol::String="x") where {V1 <: AbsVarietyT, V2 <: AbsVarietyT}
   !inclusion && return AbsVarietyHom(X, Y, l, fₓ)
-  _inclusion(AbsVarietyHom(X, Y, l))
+  _inclusion(AbsVarietyHom(X, Y, l), symbol=symbol)
 end
 
+@doc Markdown.doc"""    dim(f::AbsVarietyHom)
+Return the relative dimension."""
 dim(f::AbsVarietyHom) = f.dim
+
+@doc Markdown.doc"""    tangent_bundle(f::AbsVarietyHom)
+Return the relative tangent bundle."""
 tangent_bundle(f::AbsVarietyHom) = f.T
+
+@doc Markdown.doc"""    cotangent_bundle(f::AbsVarietyHom)
+Return the relative cotangent bundle."""
 cotangent_bundle(f::AbsVarietyHom) = dual(f.T)
+
+@doc Markdown.doc"""    todd(f::AbsVarietyHom)
+Compute the Todd class of the relative tangent bundle."""
 todd(f::AbsVarietyHom) = todd(f.T)
+
+@doc Markdown.doc"""
+    pullback(f::AbsVarietyHom, x::ChRingElem)
+    pullback(f::AbsVarietyHom, F::AbsBundle)
+Compute the pullback of a Chow ring element $x$ or a bundle $F$ by a morphism $f$.
+"""
 pullback(f::AbsVarietyHom, x::ChRingElem) = f.pullback(x)
-pushforward(f::AbsVarietyHom, x::ChRingElem) = f.pushforward(x)
 pullback(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.domain, f.pullback(F.ch))
+
+@doc Markdown.doc"""
+    pushforward(f::AbsVarietyHom, x::ChRingElem)
+    pushforward(f::AbsVarietyHom, F::AbsBundle)
+Compute the pushforward of a Chow ring element $x$ or a bundle $F$ by a
+morphism $f$. The pushforward of a bundle $F$ is understood as the alternating
+sum of all its direct images.
+"""
+pushforward(f::AbsVarietyHom, x::ChRingElem) = f.pushforward(x)
 pushforward(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.codomain, f.pushforward(F.ch * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
 
 function identity_hom(X::V) where V <: AbsVarietyT
-  AbsVarietyHom(X, X, X.(gens(X.ring.R)), map_from_func(identity, X.ring, X.ring))
+  AbsVarietyHom(X, X, gens(X.ring), map_from_func(identity, X.ring, X.ring))
 end
+
+@doc Markdown.doc"""
+    *(f::AbsVarietyHom, g::AbsVarietyHom)
+Construct the composition morphism $g\circ f: X\to Z$ for $f: X\to Y$ and $g:Y\to Z$.
+"""
 function *(f::AbsVarietyHom, g::AbsVarietyHom)
   X, Y = f.domain, f.codomain
   @assert g.domain == Y
@@ -135,6 +232,8 @@ end
 #
 # AbsVariety
 #
+@doc Markdown.doc"""    AbsVariety(n::Int, R::ChRing)
+The type of an abstract variety."""
 mutable struct AbsVariety <: AbsVarietyT
   dim::Int
   ring::ChRing
@@ -150,12 +249,20 @@ mutable struct AbsVariety <: AbsVarietyT
     X = new(n, R, base)
     set_special(R, :variety => X)
     set_special(R, :variety_dim => n)
-    # trim!(R) # TODO add an option to allow disabling it
     return X
   end
 end
 
+trim!(X::AbsVariety) = (trim!(X.ring); X)
+
 # generic variety with some classes in given degrees
+@doc Markdown.doc"""
+    variety(n::Int, symbols::Vector{String}, degs::Vector{Int})
+
+Construct a generic variety of dimension $n$ with some classes in given degrees.
+
+Return the variety and the list of classes.
+"""
 function variety(n::Int, symbols::Vector{String}, degs::Vector{Int}; base::Ring=Singular.QQ)
   @assert length(symbols) > 0
   R = ChRing(PolynomialRing(base, symbols)[1], degs)
@@ -163,7 +270,14 @@ function variety(n::Int, symbols::Vector{String}, degs::Vector{Int}; base::Ring=
 end
 
 # generic variety with some bundles in given ranks
-function variety(n::Int, bundles::Vector{Pair{Int,T}}; base::Ring=Singular.QQ) where T
+@doc Markdown.doc"""
+    variety(n::Int, bundles::Vector{Pair{Int, T}}) where T
+
+Construct a generic variety of dimension $n$ with some bundles of given ranks.
+
+Return the variety and the list of bundles.
+"""
+function variety(n::Int, bundles::Vector{Pair{Int, T}}; base::Ring=Singular.QQ) where T
   symbols = vcat([_parse_symbol(s,1:r) for (r,s) in bundles]...)
   degs = vcat([collect(1:r) for (r,s) in bundles]...)
   X = variety(n, symbols, degs, base=base)[1]
@@ -177,6 +291,13 @@ function variety(n::Int, bundles::Vector{Pair{Int,T}}; base::Ring=Singular.QQ) w
 end
 
 # generic variety with tangent bundle
+@doc Markdown.doc"""
+    variety(n::Int)
+
+Construct a generic variety of dimension $n$ and define its tangent bundle.
+
+Return the variety.
+"""
 function variety(n::Int; base::Ring=Singular.QQ)
   n == 0 && return point()
   X, (T,) = variety(n, [n=>"c"], base=base)
@@ -184,22 +305,92 @@ function variety(n::Int; base::Ring=Singular.QQ)
   return X
 end
 
-(X::AbsVariety)(f::Union{Scalar, RingElem}) = simplify(X.ring(f))
+(X::AbsVariety)(f::Union{Scalar, RingElem}) = X.ring(f, reduce=true)
 
+@doc Markdown.doc"""
+    OO(X::AbsVariety)
+    OO(X::TnVariety)
+
+Return the trivial bundle $\mathcal O_X$ on $X$.
+"""
 OO(X::AbsVariety) = AbsBundle(X, X(1))
+@doc Markdown.doc"""
+    OO(X::AbsVariety, n)
+    OO(X::AbsVariety, D)
+
+Return the line bundle $\mathcal O_X(n)$ on $X$ if $X$ has been given a
+polarization, or a line bundle $\mathcal O_X(D)$ with first Chern class $D$.
+"""
 OO(X::AbsVariety, n::Scalar) = AbsBundle(X, 1, 1+n*X.O1)
 OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1+D[1])
+
+@doc Markdown.doc"""    degree(X::AbsVariety)
+Compute the degree of $X$ with respect to its polarization."""
 degree(X::AbsVariety) = integral(X.O1^X.dim)
+
+@doc Markdown.doc"""
+    tangent_bundle(X::AbsVariety)
+    tangent_bundle(X::TnVariety)
+Return the tangent bundle of a variety $X$. Same as `X.T`.
+"""
 tangent_bundle(X::AbsVariety) = X.T
+
+@doc Markdown.doc"""
+    cotangent_bundle(X::AbsVariety)
+    cotangent_bundle(X::TnVariety)
+Return the cotangent bundle of a variety $X$.
+"""
 cotangent_bundle(X::AbsVariety) = dual(X.T)
+
+@doc Markdown.doc"""    canonical_class(X::AbsVariety)
+Return the canonical class of a variety $X$."""
 canonical_class(X::AbsVariety) = -chern(1, X.T)
+
+@doc Markdown.doc"""    canonical_bundle(X::AbsVariety)
+Return the canonical bundle of a variety $X$."""
 canonical_bundle(X::AbsVariety) = det(cotangent_bundle(X))
+
+@doc Markdown.doc"""
+    bundles(X::AbsVariety)
+    bundles(X::TnVariety)
+Return the tautological bundles of a variety $X$. Same as `X.bundles`.
+"""
+bundles(X::AbsVariety) = X.bundles
+
+@doc Markdown.doc"""
+    chern(X::AbsVariety)
+    chern(X::TnVariety)
+Compute the total Chern class of the tangent bundle of $X$.
+"""
 chern(X::AbsVariety) = chern(X.T)
-chern(n::Int, X::AbsVariety) = chern(n, X.T)
+
+@doc Markdown.doc"""
+    chern(k::Int, X::AbsVariety)
+    chern(k::Int, X::TnVariety)
+Compute the $k$-th Chern class of the tangent bundle of $X$.
+"""
+chern(k::Int, X::AbsVariety) = chern(k, X.T)
+
+@doc Markdown.doc"""
+    euler(X::AbsVariety)
+    euler(X::TnVariety)
+
+Compute the Euler number of a variety $X$.
+"""
 euler(X::AbsVariety) = integral(chern(X.T))
+
+@doc Markdown.doc"""    todd(X::AbsVariety)
+Compute the Todd class of the tangent bundle of $X$."""
 todd(X::AbsVariety) = todd(X.T)
+
+@doc Markdown.doc"""    pontryagin(X::AbsVariety)
+Compute the total Pontryagin class of the tangent bundle of $X$."""
 pontryagin(X::AbsVariety) = pontryagin(X.T)
-pontryagin(n::Int, X::AbsVariety) = pontryagin(n, X.T)
+
+@doc Markdown.doc"""    pontryagin(k::Int, X::AbsVariety)
+Compute the $k$-th Pontryagin class of the tangent bundle of $X$."""
+pontryagin(k::Int, X::AbsVariety) = pontryagin(k, X.T)
+
 chi(p::Int, X::AbsVariety) = chi(exterior_power(p, dual(X.T))) # generalized Todd genus
 
 function todd_polynomial(n::Int)
@@ -213,6 +404,14 @@ function todd_polynomial(n::Int, k::Int)
   sum(chi(p, X).f * (z-1)^p for p in 0:n)
 end
 
+@doc Markdown.doc"""
+    chern_number(X::AbsVariety, λ::Int...)
+    chern_number(X::AbsVariety, λ::Vector{Int})
+    chern_number(X::AbsVariety, λ::Partition)
+Compute the Chern number $c_\lambda (X):=\int_X c_{\lambda_1}(X)\cdots
+c_{\lambda_k}(X)$, where $\lambda:=(\lambda_1,\dots,\lambda_k)$ is a partition
+of the dimension of $X$.
+"""
 chern_number(X::AbsVariety, λ::Int...) = chern_number(X, collect(λ))
 chern_number(X::AbsVariety, λ::Partition) = chern_number(X, collect(λ))
 function chern_number(X::AbsVariety, λ::Vector{Int})
@@ -220,6 +419,12 @@ function chern_number(X::AbsVariety, λ::Vector{Int})
   c = chern(X)[1:X.dim]
   integral(prod([c[i] for i in λ]))
 end
+
+@doc Markdown.doc"""
+    chern_numbers(X::AbsVariety)
+Compute all the Chern numbers of $X$ as a list of pairs $\lambda\Rightarrow
+c_\lambda(X)$.
+"""
 function chern_numbers(X::AbsVariety)
   c = chern(X)[1:X.dim]
   [λ => integral(prod([c[i] for i in λ])) for λ in partitions(X.dim)]
@@ -238,8 +443,34 @@ for g in [:a_hat_genus, :l_genus]
   end
 end
 
+@doc Markdown.doc"""    a_hat_genus(k::Int, X::AbsVariety)
+Compute the $k$-th $\hat A$ genus of a variety $X$."""
+a_hat_genus(k::Int, X::AbsVariety)
+
+@doc Markdown.doc"""    l_genus(k::Int, X::AbsVariety)
+Compute the $k$-th L genus of a variety $X$."""
+l_genus(k::Int, X::AbsVariety)
+
+@doc Markdown.doc"""    a_hat_genus(X::AbsVariety)
+Compute the top $\hat A$ genus of a variety $X$ of even dimension."""
+a_hat_genus(X::AbsVariety)
+
+@doc Markdown.doc"""    l_genus(X::AbsVariety)
+Compute the top L genus of a variety $X$ of even dimension."""
+l_genus(X::AbsVariety)
+
+
+
+@doc Markdown.doc"""    signature(X::AbsVariety)
+Compute the signature of a variety $X$ of even dimension."""
 signature(X::AbsVariety) = l_genus(X) # Hirzebruch signature theorem
 
+@doc Markdown.doc"""
+    hilbert_polynomial(F::AbsBundle)
+    hilbert_polynomial(X::AbsVariety)
+Compute the Hilbert polynomial of a bundle $F$ or the Hilbert polynomial of $X$
+itself, with respect to the polarization $\mathcal O_X(1)$ on $X$.
+"""
 function hilbert_polynomial(F::AbsBundle)
   !isdefined(F.parent, :O1) && error("no polarization is specified for the variety")
   X, O1 = F.parent, F.parent.O1
@@ -258,7 +489,7 @@ function hilbert_polynomial(F::AbsBundle)
   # convert back to a true polynomial
   denom = Singular.n_transExt_to_spoly(denominator(hilb))
   denom = constant_coefficient(denom)
-  return Singular.change_base_ring(QQ, 1//denom * Singular.n_transExt_to_spoly(hilb))
+  return 1//denom * Singular.n_transExt_to_spoly(hilb)
 end
 hilbert_polynomial(X::AbsVariety) = hilbert_polynomial(OO(X))
 
@@ -282,7 +513,10 @@ function _hom(X::AbsVariety, Y::AbsVariety)
   end
   error("no canonical homomorphism between the given varieties")
 end
+
 # morphisms for points are convenient, but are not desired when doing coercion
+@doc Markdown.doc"""    hom(X::AbsVariety, Y::AbsVariety)
+Return a canonicallly defined morphism from $X$ to $Y$."""
 function hom(X::AbsVariety, Y::AbsVariety)
   get_special(Y, :point) !== nothing && return hom(X, Y, [X(0)]) # Y is a point
   get_special(X, :point) !== nothing && return hom(X, Y, repeat([X(0)], length(gens(Y.ring)))) # X is a point
@@ -291,21 +525,27 @@ end
 →(X::AbsVariety, Y::AbsVariety) = hom(X, Y)
 
 # product variety
+@doc Markdown.doc"""
+    *(X::AbsVariety, Y::AbsVariety)
+Construct the product variety $X\times Y$. If both $X$ and $Y$ have a
+polarization, $X\times Y$ will be endowed with the polarization of the Segre
+embedding.
+"""
 function *(X::AbsVariety, Y::AbsVariety)
   @assert X.base == Y.base
   base = X.base
   A, B = X.ring, Y.ring
-  AI = isdefined(A, :I) ? A.I : Ideal(A.R, [A.R()])
-  BI = isdefined(B, :I) ? B.I : Ideal(B.R, [B.R()])
   symsA, symsB = string.(gens(A.R)), string.(gens(B.R))
   a = length(symsA)
   R, x = PolynomialRing(base, vcat(symsA, symsB))
-  IA = Ideal(R, [g(x[1:a]...) for g in gens(AI)])
-  IB = Ideal(R, [g(x[a+1:end]...) for g in gens(BI)])
+  AtoR = Singular.AlgebraHomomorphism(A.R, R, x[1:a])
+  BtoR = Singular.AlgebraHomomorphism(B.R, R, x[a+1:end])
+  IA = Ideal(R, isdefined(A, :I) ? AtoR.(gens(A.I)) : [R()])
+  IB = Ideal(R, isdefined(B, :I) ? BtoR.(gens(B.I)) : [R()])
   AˣXY = ChRing(R, vcat(A.w, B.w), IA+IB)
   XY = AbsVariety(X.dim+Y.dim, AˣXY)
   if isdefined(X, :point) && isdefined(Y, :point)
-    XY.point = XY(X.point.f(x[1:a]...) * Y.point.f(x[a+1:end]...))
+    XY.point = XY(AtoR(X.point.f) * BtoR(Y.point.f))
   end
   p = AbsVarietyHom(XY, X, XY.(x[1:a]))
   q = AbsVarietyHom(XY, Y, XY.(x[a+1:end]))
@@ -330,6 +570,11 @@ function adams(k::Int, x::ChRingElem)
   sum([ZZ(k)^i*comps[i+1] for i in 0:n])
 end
 
+@doc Markdown.doc"""
+    dual(F::AbsBundle)
+    dual(F::TnBundle)
+Return the dual bundle.
+"""
 function dual(F::AbsBundle)
   AbsBundle(F.parent, adams(-1, F.ch))
 end
@@ -338,6 +583,12 @@ end
 +(F::AbsBundle, n::Union{Scalar,RingElem}) = n + F
 *(F::AbsBundle, n::Union{Scalar,RingElem}) = n * F
 -(F::AbsBundle) = AbsBundle(F.parent, -F.ch)
+
+@doc Markdown.doc"""
+    det(F::AbsBundle)
+    det(F::TnBundle)
+Return the determinant bundle.
+"""
 det(F::AbsBundle) = AbsBundle(F.parent, 1, 1 + F.ch[1])
 function _coerce(F::AbsBundle, G::AbsBundle)
   X, Y = F.parent, G.parent
@@ -360,6 +611,11 @@ for O in [:(+), :(-), :(*)]
 end
 hom(F::AbsBundle, G::AbsBundle) = dual(F) * G
 
+@doc Markdown.doc"""
+    exterior_power(k::Int, F::AbsBundle)
+    exterior_power(k::Int, F::TnBundle)
+Return the $k$-th exterior power.
+"""
 function exterior_power(k::Int, F::AbsBundle)
   AbsBundle(F.parent, _wedge(k, F.ch)[end])
 end
@@ -368,6 +624,11 @@ function exterior_power(F::AbsBundle)
   AbsBundle(F.parent, sum([(-1)^(i-1) * w for (i, w) in enumerate(_wedge(F.rank, F.ch))]))
 end
 
+@doc Markdown.doc"""
+    symmetric_power(k, F::AbsBundle)
+    symmetric_power(k::Int, F::TnBundle)
+Return the $k$-th symmetric power. For an `AbsBundle`, $k$ can contain parameters.
+"""
 function symmetric_power(k::Int, F::AbsBundle)
   AbsBundle(F.parent, _sym(k, F.ch)[end])
 end
@@ -379,16 +640,22 @@ function symmetric_power(k::Scalar, F::AbsBundle)
   AbsBundle(X, p.pushforward(sum((OO(PF, k).ch * todd(p))[0:PF.dim])))
 end
 
+@doc Markdown.doc"""
+    schur_functor(λ::Vector{Int}, F::AbsBundle)
+    schur_functor(λ::Partition, F::AbsBundle)
+Return the result of the Schur functor $\mathbf S^\lambda$.
+"""
 function schur_functor(λ::Vector{Int}, F::AbsBundle) schur_functor(Partition(λ), F) end
 function schur_functor(λ::Partition, F::AbsBundle)
   λ = conj(λ)
   X = F.parent
   w = _wedge(sum(λ), F.ch)
-  S, ei = Nemo.PolynomialRing(QQ, ["e$i" for i in 1:length(w)])
+  S, ei = PolynomialRing(Singular.QQ, ["e$i" for i in 1:length(w)])
   e = i -> (i < 0) ? S(0) : ei[i+1]
   M = [e(λ[i]-i+j) for i in 1:length(λ), j in 1:length(λ)]
   sch = det(Nemo.matrix(S, M)) # Jacobi-Trudi
-  AbsBundle(X, X(sch([wi.f for wi in w]...)))
+  StoX = Singular.AlgebraHomomorphism(S, X.ring.R, [wi.f for wi in w])
+  AbsBundle(X, X(StoX(sch)))
 end
 function giambelli(λ::Vector{Int}, F::AbsBundle)
   R = F.parent.ring
@@ -400,24 +667,55 @@ end
 #
 # Various computations
 #
+@doc Markdown.doc"""    basis(X::AbsVariety)
+Return an additive basis of the Chow ring of $X$."""
 function basis(X::AbsVariety)
-  !isdefined(X.ring, :I) && error("the ring has no ideal")
-  Singular.dimension(X.ring.I) > 0 && error("the ideal is not 0-dimensional")
-  X.ring.(gens(Singular.kbase(X.ring.I)))
+  if get_special(X, :basis) === nothing
+    try_trim = "Try use `trim!`."
+    !isdefined(X.ring, :I) && error("the ring has no ideal. "*try_trim)
+    Singular.dimension(X.ring.I) > 0 && error("the ideal is not 0-dimensional. "*try_trim)
+    ans = X.ring.(gens(Singular.kbase(X.ring.I)))
+    set_special(X, :basis => ans)
+  end
+  return get_special(X, :basis)
 end
 
+@doc Markdown.doc"""    basis_by_degree(X::AbsVariety)
+Return an additive basis of the Chow ring of $X$, regrouped by increasing
+degree (i.e., increasing codimension)."""
 function basis_by_degree(X::AbsVariety)
-  n = X.dim
-  b = basis(X)
-  ans = [ChRingElem[] for i in 0:n]
-  for bi in b
-    push!(ans[total_degree(bi)+1], bi)
+  # it is important for this to be cached!
+  if get_special(X, :basis_by_degree) === nothing
+    n = X.dim
+    b = basis(X)
+    ans = [ChRingElem[] for i in 0:n]
+    for bi in b
+      push!(ans[total_degree(bi)+1], bi)
+    end
+    set_special(X, :basis_by_degree => ans)
   end
-  ans
+  return get_special(X, :basis_by_degree)
 end
+
+@doc Markdown.doc"""    basis(k::Int, X::AbsVariety)
+Return an additive basis of the Chow ring of $X$ in codimension $k$."""
 basis(k::Int, X::AbsVariety) = basis_by_degree(X)[k+1]
+
+@doc Markdown.doc"""    betti(X::AbsVariety)
+Return the Betti numbers of the Chow ring of $X$. Note that these are not
+necessarily equal to the usual Betti numbers, i.e., the dimensions of
+(co)homologies."""
 betti(X::AbsVariety) = length.(basis_by_degree(X))
 
+@doc Markdown.doc"""
+    integral(x::ChRingElem)
+
+Compute the integral of a Chow ring element.
+
+If the variety $X$ has a (unique) point class `X.point`, the integral will be a
+number (an `fmpq` or a function field element). Otherwise the 0-dimensional
+part of $x$ is returned.
+"""
 function integral(x::ChRingElem)
   X = get_special(parent(x), :variety)
   if isdefined(X, :point) && length(basis(X.dim, X)) == 1
@@ -427,6 +725,17 @@ function integral(x::ChRingElem)
   end
 end
 
+@doc Markdown.doc"""
+    intersection_matrix(a::Vector)
+    intersection_matrix(a::Vector, b::Vector)
+    intersection_matrix(X::AbsVariety)
+
+Compute the intersection matrix among entries of a vector $a$ of Chow ring
+elements, or between two vectors $a$ and $b$. For a variety $X$, this computes
+the intersection matrix of the additive basis given by `basis(X)`.
+
+Return a `Nemo.fmpq_mat` if possible, or a `Matrix` otherwise.
+"""
 function intersection_matrix(X::AbsVariety) intersection_matrix(basis(X)) end
 function intersection_matrix(a::Vector{}, b=nothing)
   if b === nothing b = a end
@@ -438,26 +747,35 @@ function intersection_matrix(a::Vector{}, b=nothing)
   end
 end
 
+@doc Markdown.doc"""    dual_basis(X::AbsVariety)
+Compute the dual basis with respect to the additive basis given by `basis(X)`."""
 function dual_basis(X::AbsVariety)
   n = X.dim
   ans = Dict{RingElem, ChRingElem}()
-  B = basis(X)
   # find dual using only classes in complementary dimensions
-  Bd = basis_by_degree(X)
-  for (i,b) in enumerate(Bd)
-    l = length(b)
-    comp = Bd[n+2-i]
-    d = Matrix(inv(intersection_matrix(comp, b))) * comp
-    for (j,bj) in enumerate(b)
-      ans[bj.f] = d[j]
+  B = basis_by_degree(X)
+  for d in 0:(n+1)÷2
+    b_d = B[d+1]
+    b_comp = B[n-d+1]
+    M = Matrix(inv(intersection_matrix(b_comp, b_d)))
+    b_d_dual = M * b_comp
+    for (j,b) in enumerate(b_d)
+      ans[b.f] = b_d_dual[j]
+    end
+    b_comp_dual = M' * b_d
+    for (j,b) in enumerate(b_comp)
+      ans[b.f] = b_comp_dual[j]
     end
   end
-  [ans[B[i].f] for i in 1:length(B)]
+  map(b -> ans[b.f], basis(X))
 end
 
-function _expp(x::ChRingElem)
+# the parameter for truncation is usually the dimension, but can also be set
+# manually, which is used when computing particular Chern classes (without
+# computing the total Chern class)
+function _expp(x::ChRingElem; truncate::Int=-1)
   R = x.parent
-  n = get_special(R, :variety_dim)
+  n = truncate < 0 ? get_special(R, :variety_dim) : truncate
   comps = x[0:n]
   p = [(-1)^i*factorial(ZZ(i))*comps[i+1] for i in 0:n]
   e = repeat([R(0)], n+1)
@@ -486,7 +804,7 @@ function inv(x::ChRingElem)
   comps = x[0:n]
   c = sum([t^i * comps[i+1].f for i in 0:n])
   s = inv(c)
-  simplify(R(sum(Nemo.coeff(s, i) for i in 0:n)))
+  R(sum(Nemo.coeff(s, i) for i in 0:n), reduce=true)
 end
 
 function Base.sqrt(x::ChRingElem)
@@ -569,6 +887,21 @@ for (g,s) in [:a_hat_genus=>"p", :l_genus=>"p", :todd=>"c"]
   end
 end
 
+@doc Markdown.doc"""    todd(n::Int)
+Compute the (generic) $n$-th Todd genus.""" todd(n::Int)
+@doc Markdown.doc"""    l_genus(n::Int)
+Compute the (generic) $n$-th L genus.""" l_genus(n::Int)
+@doc Markdown.doc"""    a_hat_genus(n::Int)
+Compute the (generic) $n$-th $\hat A$ genus.""" a_hat_genus(n::Int)
+
+@doc Markdown.doc"""
+    section_zero_locus(F::AbsBundle)
+
+Construct the zero locus of a general section of a bundle $F$.
+
+Use the argument `class=true` to only compute the class of the zero locus (same
+as `ctop(F)`).
+"""
 function section_zero_locus(F::AbsBundle; class::Bool=false)
   X = F.parent
   R = X.ring
@@ -590,9 +923,9 @@ function section_zero_locus(F::AbsBundle; class::Bool=false)
     Z.T = AbsBundle(Z, Z((X.T.ch - F.ch).f))
   end
   if isdefined(X, :O1)
-    Z.O1 = simplify(Z(X.O1.f))
+    Z.O1 = Z(X.O1.f)
   end
-  iₓ = x -> simplify(x.f * cZ)
+  iₓ = x -> x.f * cZ
   iₓ = map_from_func(iₓ, Z.ring, X.ring)
   i = AbsVarietyHom(Z, X, Z.(gens(R.R)), iₓ)
   i.T = pullback(i, -F)
@@ -600,9 +933,22 @@ function section_zero_locus(F::AbsBundle; class::Bool=false)
   return Z
 end
 
-complete_intersection(P::AbsVariety, degs::Int...) = complete_intersection(P, collect(degs))
-complete_intersection(P::AbsVariety, degs::Vector{Int}) = section_zero_locus(sum(OO(P, d) for d in degs))
+@doc Markdown.doc"""
+    complete_intersection(X::AbsVariety, degs::Int...)
+    complete_intersection(X::AbsVariety, degs::Vector{Int})
+Construct the complete intersection in $X$ of general hypersurfaces with
+degrees $d_1,\dots,d_k$.
+"""
+complete_intersection(X::AbsVariety, degs::Int...) = complete_intersection(X, collect(degs))
+complete_intersection(X::AbsVariety, degs::Vector{Int}) = section_zero_locus(sum(OO(X, d) for d in degs))
 
+@doc Markdown.doc"""
+    degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle)
+
+Construct the $k$-degeneracy locus for a general bundle map from $F$ to $G$.
+
+Use the argument `class=true` to only compute the class of the degeneracy locus.
+"""
 function degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle; class::Bool=false)
   F, G = _coerce(F, G)
   m, n = rank(F), rank(G)
@@ -610,7 +956,7 @@ function degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle; class::Bool=false)
   if class
     # return only the class of D in the chow ring of X
     if (m-k)*(n-k) <= F.parent.dim # Porteous' formula
-      return _homog_comp((m-k)*(n-k), ch(schur_functor(repeat([m-k], n-k), G-F)))
+      return ch(schur_functor(repeat([m-k], n-k), G-F))[(m-k)*(n-k)]
     else # expected dimension is negative
       return F.parent.ring(0)
     end
@@ -626,6 +972,8 @@ end
 #
 # Projective spaces, Grassmannians, flag varieties
 #
+@doc Markdown.doc"""    point()
+Construct a point as an abstract variety."""
 function point(; base::Ring=Singular.QQ)
   R, (p,) = PolynomialRing(base, ["p"])
   I = Ideal(R, [p])
@@ -638,6 +986,9 @@ function point(; base::Ring=Singular.QQ)
   return pt
 end
 
+@doc Markdown.doc"""    proj(n::Int)
+Construct an abstract projective space of dimension $n$, parametrizing
+1-dimensional *subspaces* of a vector space of dimension $n+1$."""
 function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   R, (h,) = PolynomialRing(base, [symbol])
   I = Ideal(R, [h^(n+1)])
@@ -659,15 +1010,19 @@ function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   return P
 end
 
+@doc Markdown.doc"""    proj(F::AbsBundle)
+Construct the projectivization of a bundle $F$, parametrizing 1-dimensional
+*subspaces*."""
 function proj(F::AbsBundle; symbol::String="h")
   X, r = F.parent, F.rank
   !(r isa Int) && error("expect rank to be an integer")
   R = X.ring
   syms = vcat([symbol], string.(gens(R.R)))
+  ord = ordering_dp(1) * R.R.ord
   # construct the ring
-  R1, (h,) = PolynomialRing(X.base, syms)
-  pback = x -> x(gens(R1)[2:end]...)
-  pfwd = y -> y(vcat([R.R(0)], gens(R.R))...)
+  R1, (h,) = PolynomialRing(X.base, syms, ordering=ord)
+  pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[2:end])
+  pfwd = Singular.AlgebraHomomorphism(R1, R.R, pushfirst!(gens(R.R), R.R()))
   # construct the ideal
   rels = [sum(pback(chern(i, F).f) * h^(r-i) for i in 0:r)]
   if isdefined(R, :I) rels = vcat(pback.(gens(R.I)), rels) end
@@ -691,8 +1046,17 @@ function proj(F::AbsBundle; symbol::String="h")
   return PF
 end
 
-# combine the interface for AbsVariety and TnVariety versions
+@doc Markdown.doc"""
+    grassmannian(k::Int, n::Int; bott::Bool=false)
+
+Construct an abstract Grassmannian $\mathrm{Gr}(k, n)$, parametrizing
+$k$-dimensional subspaces of an $n$-dimensional vector space.
+
+Use the argument `bott=true` to construct the Grassmannian as a `TnVariety` for
+computing integrals using Bott's formula.
+"""
 function grassmannian(k::Int, n::Int; bott::Bool=false, weights=:int, base::Ring=Singular.QQ, symbol::String="c")
+  # combine the interface for AbsVariety and TnVariety versions
   bott && return tn_grassmannian(k, n, weights=weights)
   abs_grassmannian(k, n, base=base, symbol=symbol)
 end
@@ -719,8 +1083,18 @@ function abs_grassmannian(k::Int, n::Int; base::Ring=Singular.QQ, symbol::String
   return Gr
 end
 
-# combine the interface for AbsVariety and TnVariety versions
+@doc Markdown.doc"""
+    flag(dims::Int...; bott::Bool=false)
+    flag(dims::Vector{Int}; bott::Bool=false)
+
+Construct an abstract flag variety $\mathrm{Fl}(d_1,\dots,d_k)$, parametrizing
+flags of subspaces $V_{d_1}\subset V_{d_2}\subset\cdots\subset V_{d_k}=V$.
+
+Use the argument `bott=true` to construct the flag variety as a `TnVariety` for
+computing integrals using Bott's formula.
+"""
 function flag(dims::Int...; bott::Bool=false, weights=:int, base::Ring=Singular.QQ, symbol::String="c")
+  # combine the interface for AbsVariety and TnVariety versions
   bott && return tn_flag(collect(dims), weights=weights)
   abs_flag(collect(dims), base=base, symbol=symbol)
 end
@@ -736,7 +1110,8 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   @assert all(r->r>0, ranks)
   d = sum(ranks[i] * sum(dims[end]-dims[i]) for i in 1:l-1)
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]...)
-  R = PolynomialRing(base, syms)[1]
+  ord = prod(ordering_dp(r) for r in ranks)
+  R = PolynomialRing(base, syms, ordering=ord)[1]
   AˣFl = ChRing(R, vcat([collect(1:r) for r in ranks]...))
   c = pushfirst!([1+sum(gens(R)[dims[i]+1:dims[i+1]]) for i in 1:l-1], 1+sum(gens(R)[1:dims[1]]))
   Rx, x = R["x"]
@@ -756,7 +1131,15 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   return Fl
 end
 
-function flag(k::Int, F::AbsBundle; symbol::String="c") flag([k], F, symbol=symbol) end
+@doc Markdown.doc"""
+    flag(d::Int, F::AbsBundle)
+    flag(dims::Vector{Int}, F::AbsBundle)
+
+Construct the relative flag variety of a bundle $F$, parametrizing
+flags of subspaces $V_{d_1}\subset V_{d_2}\subset\cdots\subset V_{d_k}$. The
+last dimension (i.e., the rank of $F$) can be omitted.
+"""
+function flag(d::Int, F::AbsBundle; symbol::String="c") flag([d], F, symbol=symbol) end
 function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   X, n = F.parent, F.rank
   !(n isa Int) && error("expect rank to be an integer")
@@ -773,9 +1156,10 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   # construct the ring
   R = X.ring
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]..., string.(gens(R.R)))
-  R1 = PolynomialRing(X.base, syms)[1]
-  pback = x -> x(gens(R1)[n+1:end]...)
-  pfwd = y -> y(vcat(repeat([R.R(0)], n), gens(R.R))...)
+  ord = prod(ordering_dp(r) for r in ranks) * X.ring.R.ord
+  R1 = PolynomialRing(X.base, syms, ordering=ord)[1]
+  pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[n+1:end])
+  pfwd = Singular.AlgebraHomomorphism(R1, R.R, vcat(repeat([R.R()], n), gens(R.R)))
   AˣFl = ChRing(R1, vcat([collect(1:r) for r in ranks]..., R.w), :variety_dim => X.dim+d)
   # compute the relations
   c = pushfirst!([1+sum(gens(R1)[dims[i]+1:dims[i+1]]) for i in 1:l-1], 1+sum(gens(R1)[1:dims[1]]))
@@ -790,15 +1174,13 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   Fl = AbsVariety(X.dim + d, AˣFl)
   Fl.bundles = [AbsBundle(Fl, r, ci) for (r,ci) in zip(ranks, c)]
   section = prod(ctop(E)^sum(dims[i]) for (i, E) in enumerate(Fl.bundles[2:end]))
+  if isdefined(X, :point)
+    Fl.point = pback(X.point.f) * section
+  end
   pˣ = Fl.(gens(R1)[n+1:end])
-  # TODO needs the block ordering to get the correct result
-  # is there a workaround?
-  pₓ = x -> (@warn "the result may be wrong"; X(pfwd(div(x, section).f)))
+  pₓ = x -> X(pfwd(div(x, section).f))
   pₓ = map_from_func(pₓ, Fl.ring, X.ring)
   p = AbsVarietyHom(Fl, X, pˣ, pₓ)
-  if isdefined(X, :point)
-    Fl.point = p.pullback(X.point) * section
-  end
   p.O1 = simplify(sum((i-1)*chern(1, Fl.bundles[i]) for i in 1:l))
   Fl.O1 = p.O1
   p.T = sum(dual(Fl.bundles[i]) * sum([Fl.bundles[j] for j in i+1:l]) for i in 1:l-1)
@@ -812,6 +1194,13 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   return Fl
 end
 
+@doc Markdown.doc"""
+    schubert_class(G::AbsVariety, λ::Int...)
+    schubert_class(G::AbsVariety, λ::Vector{Int})
+    schubert_class(G::AbsVariety, λ::Partition)
+
+Return the Schubert class $\sigma_\lambda$ on a (relative) Grassmannian $G$.
+"""
 function schubert_class(G::AbsVariety, λ::Int...) schubert_class(G, collect(λ)) end
 function schubert_class(G::AbsVariety, λ::Partition) schubert_class(G, collect(λ)) end
 function schubert_class(G::AbsVariety, λ::Vector{Int})
@@ -819,6 +1208,8 @@ function schubert_class(G::AbsVariety, λ::Vector{Int})
   (length(λ) > rank(G.bundles[1]) || sort(λ, rev=true) != λ) && error("the Schubert input is not well-formed")
   giambelli(λ, G.bundles[2])
 end
+@doc Markdown.doc"""    schubert_classes(m::Int, G::AbsVariety)
+Return all the Schubert classes in codimension $m$ on a (relative) Grassmannian $G$."""
 function schubert_classes(m::Int, G::AbsVariety)
   get_special(G, :grassmannian) === nothing && error("the variety is not a Grassmannian")
   S, Q = G.bundles

@@ -16,6 +16,12 @@ Base.show(io::IO, f::VarietyHom) = print(io, "$(typeof(f).name.name) from $(f.do
 
 const Scalar = Union{Number, fmpz, fmpq, n_Q, n_transExt}
 
+@doc Markdown.doc"""
+    ChRing(R::MPolyRing, w::Vector{Int})
+    ChRing(R::MPolyRing, w::Vector{Int}, I::sideal)
+The type of a graded ring, possibly equipped with an ideal to represent a
+quotient ring.
+"""
 mutable struct ChRing <: Ring
   R::MPolyRing
   w::Vector{Int}
@@ -34,12 +40,21 @@ mutable struct ChRing <: Ring
   end
 end
 
-(R::ChRing)(f::Union{Scalar, RingElem}) = ChRingElem(R, R.R(f))
+# allow reduction
+(R::ChRing)(f::Union{Scalar, RingElem}; reduce::Bool=false) = begin
+  if !(parent(f) == R.R) f = R.R(f) end
+  if reduce && isdefined(R, :I) f = Singular.reduce(f, R.I) end
+  ChRingElem(R, f)
+end
 (R::ChRing)() = R(0)
 zero(R::ChRing) = R(0)
 one(R::ChRing) = R(1)
 gens(R::ChRing) = R.(gens(R.R))
 
+@doc Markdown.doc"""
+    ChRingElem(R::ChRing, f::RingElem)
+The type of an element of a `ChRing`.
+"""
 mutable struct ChRingElem <: RingElem
   parent::ChRing
   f::RingElem
@@ -50,10 +65,11 @@ mutable struct ChRingElem <: RingElem
 end
 
 one(::Type{ChRingElem}) = 1
-# (R::ChRing)(f::ChRingElem) = R(f.f)
-# mul!(a::ChRingElem, b::ChRingElem, c::ChRingElem) = b * c
-# addeq!(a::ChRingElem, b::ChRingElem) = a + b
 
+@doc Markdown.doc"""
+    ChAlgHom(A::ChRing, B::ChRing, image::Vector)
+The type of a ring homomorphism between two `ChRing`s.
+"""
 mutable struct ChAlgHom
   domain::ChRing
   codomain::ChRing
@@ -71,7 +87,7 @@ end
 
 function (f::ChAlgHom)(x::ChRingElem)
   @assert x.parent == f.domain
-  simplify(f.codomain(f.salg(x.f)))
+  f.codomain(f.salg(x.f), reduce=true)
 end
 
 function *(f::ChAlgHom, g::ChAlgHom)
@@ -97,19 +113,20 @@ end
 Base.parent(x::ChRingElem) = x.parent
 Nemo.parent_type(::Type{ChRingElem}) = ChRing
 
--(x::ChRingElem) = ChRingElem(x.parent, -x.f)
-for O in [:(+), :(-), :(*)]
-  @eval ($O)(x::ChRingElem, y::ChRingElem) = (
+-(x::ChRingElem) = x.parent(-x.f)
+# reduction for `*` and `^` only
+for (O, reduce) in [:(+) => false, :(-) => false, :(*) => true]
+  @eval $O(x::ChRingElem, y::ChRingElem) = (
     (x, y) = _coerce(x, y);
-    ChRingElem(x.parent, $O(x.f, y.f)))
+    x.parent($O(x.f, y.f), reduce=$reduce))
   for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt, :RingElem]
-    @eval ($O)(a::$T, x::ChRingElem) = (
-      ChRingElem(x.parent, $O(a, x.f)))
-    @eval ($O)(x::ChRingElem, a::$T) = (
-      ChRingElem(x.parent, $O(x.f, a)))
+    @eval $O(a::$T, x::ChRingElem) = (
+      x.parent($O(a, x.f), reduce=$reduce))
+    @eval $O(x::ChRingElem, a::$T) = (
+      x.parent($O(x.f, a), reduce=$reduce))
   end
 end
-^(x::ChRingElem, n::Int) = ChRingElem(x.parent, x.f^n)
+^(x::ChRingElem, n::Int) = x.parent(x.f^n, reduce=true)
 
 for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt, :RingElem]
   @eval ==(a::$T, x::ChRingElem) = x.parent(a) == x
@@ -117,22 +134,19 @@ for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt, :RingElem]
 end
 ==(x::ChRingElem, y::ChRingElem) = (
   (x, y) = _coerce(x, y);
-  @assert x.parent == y.parent;
-  x = simplify(x); y = simplify(y);
-  x.f == y.f)
+  R = x.parent;
+  R(x.f, reduce=true).f == R(y.f, reduce=true).f)
 
 function total_degree(x::ChRingElem)
-  R, f = x.parent, x.f
-  if isdefined(R, :I)
-    f = Singular.reduce(f, R.I) end
+  R = x.parent
+  f = R(x.f, reduce=true).f
   f == 0 && return 0
   max([R.w' * Singular.degrees(t) for t in Singular.terms(f)]...)
 end
 
 function ishomogeneous(x::ChRingElem)
-  R, f = x.parent, x.f
-  if isdefined(R, :I)
-    f = Singular.reduce(f, R.I) end
+  R = x.parent
+  f = R(x.f, reduce=true).f
   f == 0 && return true
   degs = [R.w' * Singular.degrees(t) for t in Singular.terms(f)]
   all(d -> d==degs[1], degs)
@@ -140,19 +154,17 @@ end
 
 div(x::ChRingElem, y::ChRingElem) = (
   (x, y) = _coerce(x, y);
-  x = simplify(x); y = simplify(y);
-  if y == 0 throw(DivideError) end;
-  ChRingElem(x.parent, div(x.f, y.f)))
+  R = x.parent;
+  xf = R(x.f, reduce=true).f;
+  yf = R(y.f, reduce=true).f;
+  if yf == 0 throw(DivideError) end;
+  R(div(xf, yf)))
 
-Base.getindex(x::ChRingElem, n::Int) =  _homog_comp(n, x)
-Base.getindex(x::ChRingElem, I::UnitRange) =  _homog_comps(I, x)
-
-function _homog_comp(n::Int, x::ChRingElem)
-  R, f = x.parent, x.f
+function Base.getindex(x::ChRingElem, n::Int)
+  R = x.parent
   d = get_special(R, :variety_dim)
   d !== nothing && n > d && return R(0)
-  if isdefined(R, :I)
-    f = Singular.reduce(f, R.I) end
+  f = R(x.f, reduce=true).f
   ans = R(0)
   for t in Singular.terms(f)
     if R.w' * Singular.degrees(t) == n
@@ -161,10 +173,9 @@ function _homog_comp(n::Int, x::ChRingElem)
   ans
 end
 
-function _homog_comps(I::UnitRange, x::ChRingElem)
-  R, f = x.parent, x.f
-  if isdefined(R, :I)
-    f = Singular.reduce(f, R.I) end
+function Base.getindex(x::ChRingElem, I::UnitRange)
+  R = x.parent
+  f = R(x.f, reduce=true).f
   ans = repeat([R(0)], length(I))
   d = get_special(R, :variety_dim)
   stop = (d === nothing) ? I.stop : min(I.stop, d)
@@ -176,16 +187,17 @@ function _homog_comps(I::UnitRange, x::ChRingElem)
   ans
 end
 
-
 function simplify(x::ChRingElem)
   R = x.parent
   n = get_special(R, :variety_dim)
   # no dimension restriction
-  n === nothing && return isdefined(R, :I) ? R(Singular.reduce(x.f, R.I)) : x
+  n === nothing && return R(x.f, reduce=true)
   # otherwise keep only terms in degree ≤ n
-  n < 0 && return R(0)
-  return sum(_homog_comps(0:n, x))
+  n < 0 && return R.R()
+  return sum(x[0:n])
 end
+
+simplify!(x::ChRingElem) = (x.f = simplify(x).f; x)
 
 # add all the relations to a Chow ring due to dimension
 function trim!(R::ChRing)
@@ -209,11 +221,14 @@ function trim!(R::ChRing)
   return R
 end
 
-function add_vars(R::ChRing, n::Int; w::Vector{Int}=Int[], symbol::String="x")
+function add_vars(R::ChRing, vars::Vector{Pair{Int, String}}; w::Vector{Int}=Int[], prod_ordering=false)
   base = base_ring(R.R)
-  syms = string.(gens(R.R))
+  syms = vcat([_parse_symbol(s, 1:k) for (k,s) in vars]..., string.(gens(R.R)))
+  n = sum(k for (k,_) in vars)
   if length(w) == 0 w = repeat([1], n) end
-  Rx, x = PolynomialRing(base, vcat(_parse_symbol(symbol, 1:n), syms))
+  @assert length(w) == n
+  ord = prod_ordering ? ordering_dp(n) * R.R.ord : :degrevlex
+  Rx, x = PolynomialRing(base, syms, ordering=ord)
   toRx = Singular.AlgebraHomomorphism(R.R, Rx, x[n+1:end])
   isdefined(R, :I) && return ChRing(Rx, vcat(w, R.w), Ideal(Rx, toRx.(gens(R.I))))
   return ChRing(Rx, vcat(w, R.w))

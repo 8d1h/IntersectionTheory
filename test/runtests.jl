@@ -1,11 +1,48 @@
 using IntersectionTheory
 using Test
 
-@testset "IntersectionTheory.GenericVariety" begin
+@testset "ChRing" begin
+
+  R, (x0,) = PolynomialRing(Singular.QQ, ["x"])
+  A = IntersectionTheory.ChRing(R, [1])
+  @test A isa IntersectionTheory.ChRing
+  @test A(1) isa IntersectionTheory.ChRingElem
+  x = gens(A)[1]
+  @test x == x0
+  @test x.f isa Singular.spoly
+  @test total_degree(x) == 1
+  @test (x + x^3)[1] == x
+  @test (x + x^3)[1:3] == [x, A(0), x^3]
+  A.I = Singular.std(Singular.Ideal(R, x0^4))
+  @test simplify(x^4).f == 0
+  @test x^4 == 0
+  @test div(x^4, x^3) == 0
+  IntersectionTheory.add_rels!(A, [x.f^3])
+  x3 = A(x0^3)
+  @test x3 == 0
+  @test x3.f == x0^3
+  @test simplify!(x3) == 0
+  @test x3.f == 0
+  
+  R, (x0, y0) = PolynomialRing(Singular.QQ, ["x", "y"])
+  A = IntersectionTheory.ChRing(R, [1, 2])
+  x, y = gens(A)
+  @test total_degree(y) == 2
+  @test (x + x^2 + y)[2] == x^2 + y
+  @test ishomogeneous(x^2 + y)
+  @test !ishomogeneous(x + y)
+  Nemo.AbstractAlgebra.set_special(A, :variety_dim => 2)
+  trim!(A)
+  @test simplify(x^3) == 0
+
+end
+
+@testset "GenericVariety" begin
   
   # generic variety
   C = variety(1)
   c = gens(C.ring)[1]
+  @test C.T === tangent_bundle(C)
   @test rank(C.T) isa Int
   @test chern(C.T) == 1 + c
   trim!(C.ring)
@@ -25,14 +62,14 @@ using Test
   C.point = 1//(2 - 2g) * chern(1, C)
   @test euler(C) == 2 - 2g
   @test rank(OO(C) * g) == g
+  @test rank(symmetric_power(g, 2OO(C))) == g + 1
 
-  # XXX this part is somehow causing a segmentation fault
   # generic variety with bundles
-  # X, (A, B) = variety(2, [3=>"a", 3=>"b"])
-  # @test schur_functor([1,1], A) == exterior_power(2, A)
-  # @test schur_functor([2], A) == symmetric_power(2, A)
-  # D = degeneracy_locus(2, A, B)
-  # @test pushforward(D → X, D(1)) == degeneracy_locus(2, A, B, class=true)
+  X, (A, B) = variety(2, [3=>"a", 3=>"b"])
+  @test schur_functor([1,1], A) == exterior_power(2, A)
+  @test schur_functor([2], A) == symmetric_power(2, A)
+  D = degeneracy_locus(2, A, B)
+  @test pushforward(D → X, D(1)) == degeneracy_locus(2, A, B, class=true)
 
   # characteristic classes
   t = todd(2)
@@ -47,13 +84,18 @@ using Test
   
 end
 
-@testset "IntersectionTheory.Hom" begin
+@testset "VarietyHom" begin
 
   p = point()
   P2 = proj(2)
+  i = P2 → P2
+  @test i.domain == P2
+  @test i.codomain == P2
+
   i = p → P2
-  @test i.pushforward(p(1)) == P2.point
-  @test i.pullback(P2.O1) == 0
+  @test pushforward(i, p(1)) == P2.point
+  @test pullback(i, P2.O1) == 0
+  @test i.T === tangent_bundle(i)
   @test -i.T == 2OO(p) # normal bundle
 
   # test that coercion works properly
@@ -63,7 +105,7 @@ end
   @test A == OO(P2)
 
   PF = proj(P2.bundles[2])
-  A = OO(PF) + OO(P2)
+  A = OO(P2) + OO(PF)
   @test parent(A) == PF
   @test A == 2OO(PF)
 
@@ -77,7 +119,7 @@ end
   P5 = proj(5, symbol="H")
   h, H = P2.O1, P5.O1
   v = hom(P2, P5, [2h])
-  @test v.pullback(H) == 2h
+  @test pullback(v, H) == 2h
   @test pullback(v, P5.point) == 0
   @test v.pushforward(h) == 2H^4
   @test pushforward(v, P2.point) == P5.point
@@ -101,9 +143,8 @@ end
   @test euler(Y1) == euler(Y)
   @test (Y1 → Y).T.ch == 0
   @test betti(Y1)[3] == 2
-  @test basis_by_degree(Y1)[3] == [h^2, p]
-  # XXX this leads to a segmentation fault
-  # @test intersection_matrix([h^2, p]) == Nemo.matrix(QQ, [3 1; 1 3])
+  @test basis(2, Y1) == [h^2, p]
+  @test intersection_matrix([h^2, p]) == Nemo.matrix(QQ, [3 1; 1 3])
 
   # a related result:
   # the degree of the hypersurface of cubics containing a plane
@@ -113,7 +154,7 @@ end
 
 end
 
-@testset "IntersectionTheory.Constructors" begin
+@testset "Constructors" begin
   
   # proj(2)
   P2 = proj(2)
@@ -144,16 +185,19 @@ end
   @test chi(cotangent_bundle(P2)) == -1
   hilb = hilbert_polynomial(P2)
   t = gens(parent(hilb))[1]
-  @test hilb isa Nemo.fmpq_mpoly
+  @test hilb isa Singular.spoly{Singular.n_Q}
   @test hilb == 1 + 3//2*t + 1//2*t^2
 
   # Grassmannian
   G = grassmannian(2, 4)
-  S, Q = G.bundles
+  S, Q = bundles(G)
   c1, c2 = gens(G.ring)
   @test betti(G) == [1,1,2,1,1]
   @test euler(G) == 6
+  @test chern(1, G) == -4chern(1, S)
   @test integral(chern(symmetric_power(3, dual(S)))) == 27
+  @test integral(chern(1, dual(S))^4) == 2
+  @test integral(chern(2, G)^2) == 98
   @test schubert_class(G, 2) == c1^2-c2
   @test schubert_class(G, [1, 1]) == c2
   @test schubert_class(G, Nemo.Partition([2, 1])) == -c1^3 + c1 * c2
@@ -161,60 +205,84 @@ end
 
   # Grassmannian: TnVariety version
   G = grassmannian(2, 4, bott=true)
-  S, Q = G.bundles
+  S, Q = bundles(G)
   @test G isa IntersectionTheory.TnVariety
   @test S isa IntersectionTheory.TnBundle
-  @test rank(G.T) == 4
+  @test rank(tangent_bundle(G)) == 4
   @test euler(G) == 6
   @test integral(chern(symmetric_power(3, dual(S)))) == 27
+  @test integral(chern(1, dual(S))^4) == 2
+  @test integral(chern(2, G)^2) == 98
 
   # flag variety
   F = flag(1, 2, 3)
-  A, B, C = F.bundles
+  A, B, C = bundles(F)
   @test dim(F) == 3
-  @test rank.(F.bundles) == [1, 1, 1]
+  @test rank.(bundles(F)) == [1, 1, 1]
   @test betti(F) == [1,2,2,1]
   @test euler(F) == 6
 
   # flag variety: TnVariety version
   F = flag(1, 2, 3, bott=true)
-  A, B, C = F.bundles
+  A, B, C = bundles(F)
   @test dim(F) == 3
-  @test rank.(F.bundles) == [1, 1, 1]
+  @test rank.(bundles(F)) == [1, 1, 1]
   @test euler(F) == 6
 
-  # TODO add tests for relative versions
+  # projective bundle
+  X, (F,) = variety(3, [3=>"c"])
+  PF = proj(F)
+  @test dim(PF) == 5
+  @test rank.(bundles(PF)) == [1, 2]
+  p = PF.struct_map
+  @test p.codomain == X
+  @test pullback(p, X(1)) == 1
+  @test pushforward(p, PF(1)) == 0
+  @test pushforward(p, p.O1^2) == 1
+  
+  # flag bundle
+  X, (F,) = variety(2, [4=>"c"])
+  FlF = flag(2, F)
+  @test dim(FlF) == 6
+  @test rank.(bundles(FlF)) == [2, 2]
+  p = FlF.struct_map
+  @test p.codomain == X
+  @test pullback(p, X(1)) == 1
+  @test pushforward(p, FlF(1)) == 0
+  @test pushforward(p, p.O1^4) == 2
+  @test [length(schubert_classes(i, FlF)) for i in 0:4] == [1,1,2,1,1]
 
 end
 
-@testset "IntersectionTheory.Pushfwd" begin
-  A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [1,1,1,1])
+@testset "Pushfwd" begin
+  A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [3,3,3,3])
   B = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["s","t"])[1], [1,1])
-  s, t = gens(B.R)
-  f = IntersectionTheory.ChAlgHom(A, B, B.([s^3,s^2*t,s*t^2,t^3])) # twisted cubic
+  s, t = gens(B)
+  f = IntersectionTheory.ChAlgHom(A, B, [s^3,s^2*t,s*t^2,t^3]) # twisted cubic
   M, g, pf = IntersectionTheory._pushfwd(f)
   @test length(g) == 6
   x = s^3 + 5s*t + t^20 # random element from B
-  @test g' * f.salg.(pf(x)) == x
+  @test g' * f.salg.(pf(x.f)) == x.f
    
+  A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [4,4,2,1])
   B = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["s","t","u"])[1], [1,1,1])
-  s, t, u = gens(B.R)
-  f = IntersectionTheory.ChAlgHom(A, B, B.([s^4+u,s*t^2*u,s^2-t^2-u^2,t])) # random morphism
+  s, t, u = gens(B)
+  f = IntersectionTheory.ChAlgHom(A, B, [s^4+u^4,s*t^2*u,s^2-t^2-u^2,t]) # random morphism
   M, g, pf = IntersectionTheory._pushfwd(f)
   @test length(g) == 8
   x = s^2 + 2s*t + 3s*t*u + t^2*u + 20t*u + u^20 # random element from B
-  @test g' * f.salg.(pf(x)) == x
+  @test g' * f.salg.(pf(x.f)) == x.f
 end
 
 # testset borrowed from Schubert2
-@testset "IntersectionTheory.Blowup" begin
+@testset "Blowup" begin
   
   # blowup Veronese
   P2 = proj(2)
   P5 = proj(5)
   v = hom(P2, P5, [2P2.O1])
   Bl, E = blowup(v)
-  c = ctop(Bl.T)
+  c = ctop(tangent_bundle(Bl))
   @test integral(pushforward(Bl → P5, c)) == 12
   @test integral(c) == 12
   e = pushforward(E → Bl, E(1))
@@ -229,7 +297,7 @@ end
   e = pushforward(E → Bl, E(1))
   @test integral(e^2) == -1
   @test integral(pullback(E → Bl, e)) == -1
-  @test integral(ctop(Bl.T)) == 4
+  @test euler(Bl) == 4
 
   # blowup point in P7
   P7 = proj(7)
@@ -279,9 +347,17 @@ end
   rH, sH, tH = [pullback(Bl → P3, x * P3.O1) - e for x in [r,s,t]]
   @test integral(rH * sH * tH) == r*s*t - d*(r+s+t) + (2g-2+4d)
   
+  G = grassmannian(2, 5)
+  Z = section_zero_locus(3OO(G, 1))
+  Bl, E = blowup(Z → G)
+  @test dim(Bl) == 6
+  @test euler(Bl) == 18
+  @test betti(Bl) == [1,2,4,4,4,2,1]
+  @test [chi(exterior_power(i, cotangent_bundle(Bl))) for i in 0:6] == [1,-2,4,-4,4,-2,1]
+
 end
 
-@testset "IntersectionTheory.Moduli" begin
+@testset "Moduli" begin
   
   M = matrix_moduli(5, 1, 2)
   @test betti(M) == betti(grassmannian(2, 5))
@@ -292,9 +368,8 @@ end
   f = q -> QQ(1//6)*q*(q-1)*(3q^2-5q+1)
   @test euler(M) == f(4)
 
-  # XXX segmentation fault
-  # H = cubics()
-  # @test betti(H) == [1,2,6,10,16,19,22,19,16,10,6,2,1]
-  # @test euler(H) == 130
+  H, Y = twisted_cubics()
+  @test betti(H) == [1,2,6,10,16,19,22,19,16,10,6,2,1]
+  @test euler(H) == 130
   
 end

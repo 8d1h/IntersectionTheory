@@ -2,6 +2,11 @@
 #
 # TnRep - n-dim representation of a torus, specified by its weights
 #
+@doc Markdown.doc"""
+    TnRep(w::Vector)
+
+The type of a representation of a torus, specified by its weights.
+"""
 struct TnRep
   n::Int
   w::Vector
@@ -23,12 +28,6 @@ function _sym(k::Int, n::Int)
   k == 0 && return [Int[]]
   vcat([[push!(c, i) for c in _sym(k-1,i)] for i in 1:n]...)
 end
-function symmetric_power(k::Int, F::TnRep)
-  TnRep([sum([F.w[i] for i in c], init=ZZ()) for c in _sym(k, F.n)])
-end
-function exterior_power(k::Int, F::TnRep)
-  TnRep([sum([F.w[i] for i in c], init=ZZ()) for c in combinations(F.n, k)])
-end
 
 ###############################################################################
 #
@@ -44,6 +43,12 @@ end
 # large examples, since otherwise we may run into memory problems.
 abstract type TnVarietyT{P} <: Variety end
 
+@doc Markdown.doc"""
+    TnBundle(X::TnVariety, r::Int, f::Function)
+
+The type of a torus-equivariant bundle, represented by its localizations to the
+fixed points of the base variety.
+"""
 mutable struct TnBundle{P, V <: TnVarietyT{P}} <: Bundle
   parent::V
   rank::Int
@@ -59,6 +64,11 @@ mutable struct TnBundle{P, V <: TnVarietyT{P}} <: Bundle
   end
 end
 
+@doc Markdown.doc"""
+    TnVariety(n::Int, points)
+
+The type of a variety with a torus action, represented by the fixed points.
+"""
 mutable struct TnVariety{P} <: TnVarietyT{P}
   dim::Int
   points::Vector{Pair{P, Int}}
@@ -71,13 +81,29 @@ mutable struct TnVariety{P} <: TnVarietyT{P}
 end
 
 euler(X::TnVariety) = sum(1//ZZ(e) for (p,e) in X.points) # special case of Bott's formula
+tangent_bundle(X::TnVariety) = X.T
+cotangent_bundle(X::TnVariety) = dual(X.T)
+bundles(X::TnVariety) = X.bundles
+OO(X::TnVariety) = TnBundle(X, 1, p -> TnRep([0]))
 
 dual(F::TnBundle) = TnBundle(F.parent, F.rank, p -> dual(F.loc(p)))
 +(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank + G.rank, p -> F.loc(p) + G.loc(p))
 *(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank * G.rank, p -> F.loc(p) * G.loc(p))
 det(F::TnBundle) = TnBundle(F.parent, 1, p -> det(F.loc(p)))
-symmetric_power(k::Int, F::TnBundle) = TnBundle(F.parent, binomial(F.rank+k-1, k), p -> symmetric_power(k, F.loc(p)))
-exterior_power(k::Int, F::TnBundle) = TnBundle(F.parent, binomial(F.rank, k), p -> exterior_power(k, F.loc(p)))
+
+# avoid computing `_sym` for each F.loc(p)
+function symmetric_power(k::Int, F::TnBundle)
+  l = _sym(k, F.rank)
+  TnBundle(F.parent, binomial(F.rank+k-1, k), p -> (
+    Fp = F.loc(p);
+    TnRep([sum([Fp.w[i] for i in c], init=ZZ()) for c in l])))
+end
+function exterior_power(k::Int, F::TnBundle)
+  l = combinations(F.rank, k)
+  TnBundle(F.parent, binomial(F.rank, k), p -> (
+    Fp = F.loc(p);
+    TnRep([sum([Fp.w[i] for i in c], init=ZZ()) for c in l])))
+end
 
 # we want the same syntax `integral(chern(F))` as in Schubert calculus
 # the following ad hoc type represents a formal expression in chern classes of a bundle F
@@ -107,7 +133,9 @@ function _get_ring(F::TnBundle)
 end
 
 chern(F::TnBundle) = TnBundleChern(F, 1+sum(gens(_get_ring(F))))
+chern(X::TnVariety) = chern(X.T)
 chern(k::Int, F::TnBundle) = TnBundleChern(F, chern(F).c[k])
+chern(k::Int, X::TnVariety) = chern(k, X.T)
 ctop(F::TnBundle) = chern(F.rank, F)
 chern(F::TnBundle, x::RingElem) = begin
   R = _get_ring(F)
@@ -125,7 +153,8 @@ function integral(c::TnBundleChern)
   idx = filter(i -> exp_vec[i] > 0, 1:r)
   ans = 0
   for (p,e) in X.points # Bott's formula
-    cherns = [i in idx ? chern(i, F.loc(p)) : ZZ() for i in 1:r]
+    Fp = F.loc(p)
+    cherns = [i in idx ? chern(i, Fp) : QQ() for i in 1:r]
     ans += top(cherns...) * (1 // (e * ctop(X.T.loc(p))))
   end
   ans
@@ -176,3 +205,18 @@ function tn_flag(dims::Vector{Int}; weights=:int)
   return Fl
 end
 
+@doc Markdown.doc"""
+    linear_subspaces_on_hypersurface(k::Int, d::Int)
+
+Compute the number of $k$-dimensional subspaces on a generic degree-$d$
+hypersurface in a projective space of dimension $n=\frac1{k+1}\binom{d+k}d+k$.
+
+The computation uses Bott's formula by default. Use the argument `bott=false`
+to switch to Schubert calculus.
+"""
+function linear_subspaces_on_hypersurface(k::Int, d::Int; bott::Bool=true)
+  n = Int(binomial(d+k, d) // (k+1)) + k
+  G = grassmannian(k+1, n+1, bott=bott)
+  S, Q = G.bundles
+  integral(ctop(symmetric_power(d, dual(S))))
+end
