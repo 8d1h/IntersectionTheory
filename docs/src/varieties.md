@@ -62,7 +62,6 @@ l_genus(2)
 ## Chow ring
 ```@docs
 basis
-basis_by_degree
 betti
 integral
 dual_basis
@@ -76,16 +75,20 @@ schubert_classes
 ### Examples
 ```@repl repl
 basis(proj(2))
-G = grassmannian(2, 4); basis(G)
+G = grassmannian(2, 4)
+basis(G)
 dual_basis(G)
-basis_by_degree(G)
 betti(G)
 basis(2, G)
 intersection_matrix(basis(2, G))
+intersection_matrix(basis(2, G), dual_basis(2, G))
 intersection_matrix(G)
 schubert_class(G, [1,1])
 schubert_classes(2, G)
 ```
+Notice that `intersection_matrix(X)` contains a lot of redundant information:
+intersection numbers that are not in complementary codimensions are always 0.
+So usually it is better to separate the components in different codimensions.
 ## Construct new varieties
 See also [Constructors](@ref).
 ```@docs

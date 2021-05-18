@@ -64,6 +64,7 @@ mutable struct ChRingElem <: RingElem
   end
 end
 
+(R::ChRing)(x::ChRingElem) = R(x.f)
 one(::Type{ChRingElem}) = 1
 
 @doc Markdown.doc"""

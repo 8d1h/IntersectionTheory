@@ -15,7 +15,8 @@ function _pushfwd(f::ChAlgHom)
   symsA, symsB = string.(gens(A.R)), string.(gens(B.R))
   a, b = length(symsA), length(symsB)
   # the ring for the graph of f
-  ord = ordering_dp(b) * ordering_dp(a)
+  # ord = ordering_dp(b) * ordering_dp(a)
+  ord = ordering_wp(B.w) * ordering_wp(A.w)
   R, ba = PolynomialRing(base, vcat(symsB, symsA), ordering=ord)
   AtoR = Singular.AlgebraHomomorphism(A.R, R, ba[b+1:end])
   BtoR = Singular.AlgebraHomomorphism(B.R, R, ba[1:b])
@@ -40,9 +41,9 @@ function _pushfwd(f::ChAlgHom)
 	     end; ans)
   F = Singular.FreeModule(R, g)
   gB = [F(push!([j == i ? R(1) : R() for j in 1:g-1], -gensB_lift[i])) for i in 1:g-1]
-  # XXX this is not very efficient: too many columns
   gJ = [F([j==i ? x : R() for j in 1:g]) for x in gens(J) for i in 1:g]
-  P = std(Singular.Module(R, vcat(gJ, gB)...)) # the presentation matrix, as an R-module
+  # XXX this is slow
+  P = std(Singular.Module(R, gB..., gJ...)) # the presentation matrix, as an R-module
   # use a new weight to do elimination
   Rw = ChRing(R, vcat(repeat([1], b), repeat([0], a)))
   inA = x -> total_degree(Rw(x)) == 0
@@ -78,7 +79,7 @@ Construct the blowup $\mathrm{Bl}_XY$ of an inclusion $i:X\hookrightarrow Y$.
 
 Return the variety $\mathrm{Bl}$ and the exceptional divisor $E$.
 """
-function blowup(i::AbsVarietyHom; symbol::String="E")
+function blowup(i::AbsVarietyHom; symbol::String="e")
   X, Y = i.domain, i.codomain
   N = -i.T # normal bundle
   d = rank(N) # codimension of X in Y

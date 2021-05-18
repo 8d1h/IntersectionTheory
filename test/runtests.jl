@@ -49,8 +49,7 @@ end
   @test Singular.dimension(C.ring.I) == 0
   @test parent(c) == C.ring
   @test betti(C) == [1, 1]
-  @test basis(C) == [c, C.ring(1)]
-  @test basis_by_degree(C) == [[C.ring(1)], [c]]
+  @test basis(C) == [[C.ring(1)], [c]]
   @test euler(C) == c
   @test chi(OO(C)) == 1//2 * c
 

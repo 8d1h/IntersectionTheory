@@ -12,7 +12,7 @@ Cubic fourfolds are degree-3 smooth hypersurfaces in $\mathbf P^5$. They can be
 constructed using `complete_intersection`.
 ```@repl repl
 Y = complete_intersection(proj(5), 3)
-basis_by_degree(Y)
+basis(Y)
 ```
 We see that a generic $Y$ only contains classes that are complete
 intersections.
@@ -24,7 +24,7 @@ We can construct a surface $S$ as follows.
 S, (h, c1, c2) = variety(2, ["h", "c1", "c2"], [1, 1, 2])
 S.T = bundle(S, 2, 1 + c1 + c2)
 trim!(S.ring);
-basis_by_degree(S)
+basis(S)
 ```
 Here we first built a generic 2-dimensional variety with some classes, then we
 specified its tangent bundle. The step `trim!` is to get rid of classes that
@@ -51,7 +51,7 @@ version of $Y$, with extra classes added.
 ```@repl repl
 j = hom(S, Y, [h], inclusion=true, symbol="s")
 Y₁ = j.codomain
-basis_by_degree(Y₁)
+basis(Y₁)
 ```
 Now we can pushforward classes on $S$.
 ```@repl repl
@@ -67,7 +67,7 @@ S = proj(2)
 for i in 1:4
   S = blowup(point() → S, symbol="E$i")[1]
 end
-basis_by_degree(S)
+basis(S)
 ```
 It can be embedded in a special cubic fourfold $Y_1$ via the anti-canonical
 linear system.

@@ -72,10 +72,13 @@ Wall time: 2.15 s
 
 ### Computing blowup
 The computation of the blowup requires a "pushforward" function. In *Macaulay2*
-there are two implementations: `pushForward`, and `pushFwd` from the
-*PushForward* package. The former appears to be faster so we followed this
-implementation. (Our implementation is still not optimal and is slower than
-*Macaulay2*'s.)
+there are two functions that do this: `pushForward`, and `pushFwd` from the
+*PushForward* package. `pushFwd` eventually calls `pushForward` so they are in
+fact the same.
+
+!!! warning
+    Our implementation is still not optimal and is slower than *Macaulay2*'s: the
+    step using `std` to reduce the module is slow. Is this a Singular problem?
 
 On the other hand, the counterpart in *Chow*, `FiniteRingExtension`, is very
 inefficient. This makes blowups in *Chow* very slow.

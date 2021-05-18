@@ -135,13 +135,13 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
       # - X is a point
       # - Y is a point or a curve
       # - all algebraic classes for Y are known
-      f_is_alg = fₓ == :alg || dim(X) == 0 || dim(Y) ≤ 1 || get_special(Y, :alg) !== nothing
-      b = basis(Y)
-      d = dual_basis(Y)
+      f_is_alg = fₓ == :alg || dim(X) == 0 || dim(Y) ≤ 1 || get_special(Y, :alg) == true
       fₓ = x -> (
 	if !f_is_alg
-	  @warn "assuming that all algebraic classes are known for\n$Y\notherwise the result may be wrong" end;
-	sum(integral(x*fˣ(y))*d[i] for (i, y) in enumerate(b)))
+	  @warn "assuming that all algebraic classes are known for\n$Y\notherwise the result may be wrong"
+	end;
+	sum(integral(xi*fˣ(yi))*di for (i, xi) in zip(dim(Y):-1:0, x[dim(X)-dim(Y):dim(X)])
+	    if xi !=0 for (yi, di) in zip(basis(i, Y), dual_basis(i, Y))))
       fₓ = map_from_func(fₓ, X.ring, Y.ring)
     end
     f = new{V1, V2}(X, Y, X.dim-Y.dim, fˣ)
@@ -158,20 +158,6 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
     fˣ = ChAlgHom(Y.ring, X.ring, l)
     AbsVarietyHom(X, Y, fˣ, fₓ)
   end
-end
-
-@doc Markdown.doc"""
-    hom(X::AbsVariety, Y::AbsVariety, l::Vector, fₓ=nothing; inclusion::Bool=false)
-
-Construct a variety morphism from $X$ to $Y$.
-
-Use the argument `inclusion=true` to declare that the morphism is an inclusion.
-A copy of $Y$ will be created, with extra classes added so that one can
-pushforward classes on $X$.
-"""
-function hom(X::V1, Y::V2, l::Vector, fₓ=nothing; inclusion::Bool=false, symbol::String="x") where {V1 <: AbsVarietyT, V2 <: AbsVarietyT}
-  !inclusion && return AbsVarietyHom(X, Y, l, fₓ)
-  _inclusion(AbsVarietyHom(X, Y, l), symbol=symbol)
 end
 
 @doc Markdown.doc"""    dim(f::AbsVarietyHom)
@@ -202,8 +188,8 @@ pullback(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.domain, f.pullback(F.ch))
     pushforward(f::AbsVarietyHom, x::ChRingElem)
     pushforward(f::AbsVarietyHom, F::AbsBundle)
 Compute the pushforward of a Chow ring element $x$ or a bundle $F$ by a
-morphism $f$. The pushforward of a bundle $F$ is understood as the alternating
-sum of all its direct images.
+morphism $f$. For abstract bundles, the pushforward is derived, e.g., for a
+bundle $F$ it is understood as the alternating sum of all direct images.
 """
 pushforward(f::AbsVarietyHom, x::ChRingElem) = f.pushforward(x)
 pushforward(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.codomain, f.pushforward(F.ch * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
@@ -254,6 +240,24 @@ mutable struct AbsVariety <: AbsVarietyT
 end
 
 trim!(X::AbsVariety) = (trim!(X.ring); X)
+
+@doc Markdown.doc"""
+    hom(X::AbsVariety, Y::AbsVariety, fˣ::Vector)
+    hom(X::AbsVariety, Y::AbsVariety, fˣ::Vector, fₓ)
+
+Construct a variety morphism from $X$ to $Y$, by specifying the pullbacks of
+the generators of the Chow ring of $Y$. The pushforward can be automatically
+computed in certain cases.
+
+In case of an inclusion $i:X\hookrightarrow Y$ where the class of $X$ is not
+present in the Chow ring of $Y$, use the argument `inclusion=true`.
+A copy of $Y$ will be created, with extra classes added so that one can
+pushforward classes on $X$.
+"""
+function hom(X::AbsVariety, Y::AbsVariety, fˣ::Vector, fₓ=nothing; inclusion::Bool=false, symbol::String="x")
+  !inclusion && return AbsVarietyHom(X, Y, fˣ, fₓ)
+  _inclusion(AbsVarietyHom(X, Y, fˣ), symbol=symbol)
+end
 
 # generic variety with some classes in given degrees
 @doc Markdown.doc"""
@@ -306,6 +310,7 @@ function variety(n::Int; base::Ring=Singular.QQ)
 end
 
 (X::AbsVariety)(f::Union{Scalar, RingElem}) = X.ring(f, reduce=true)
+gens(X::AbsVariety) = gens(X.ring)
 
 @doc Markdown.doc"""
     OO(X::AbsVariety)
@@ -555,6 +560,9 @@ function *(X::AbsVariety, Y::AbsVariety)
   if isdefined(X, :O1) && isdefined(Y, :O1) # Segre embedding
     XY.O1 = p.pullback(X.O1) + q.pullback(Y.O1)
   end
+  if get_special(X, :alg) == true && get_special(Y, :alg) == true
+    set_special(XY, :alg => true)
+  end
   set_special(XY, :projections => [p, q])
   return XY
 end
@@ -668,44 +676,33 @@ end
 # Various computations
 #
 @doc Markdown.doc"""    basis(X::AbsVariety)
-Return an additive basis of the Chow ring of $X$."""
+Return an additive basis of the Chow ring of $X$, grouped by increasing
+degree (i.e., increasing codimension)."""
 function basis(X::AbsVariety)
+  # it is important for this to be cached!
   if get_special(X, :basis) === nothing
     try_trim = "Try use `trim!`."
     !isdefined(X.ring, :I) && error("the ring has no ideal. "*try_trim)
     Singular.dimension(X.ring.I) > 0 && error("the ideal is not 0-dimensional. "*try_trim)
-    ans = X.ring.(gens(Singular.kbase(X.ring.I)))
+    b = X.ring.(gens(Singular.kbase(X.ring.I)))
+    ans = [ChRingElem[] for i in 0:X.dim]
+    for bi in b
+      push!(ans[total_degree(bi)+1], bi)
+    end
     set_special(X, :basis => ans)
   end
   return get_special(X, :basis)
 end
 
-@doc Markdown.doc"""    basis_by_degree(X::AbsVariety)
-Return an additive basis of the Chow ring of $X$, regrouped by increasing
-degree (i.e., increasing codimension)."""
-function basis_by_degree(X::AbsVariety)
-  # it is important for this to be cached!
-  if get_special(X, :basis_by_degree) === nothing
-    n = X.dim
-    b = basis(X)
-    ans = [ChRingElem[] for i in 0:n]
-    for bi in b
-      push!(ans[total_degree(bi)+1], bi)
-    end
-    set_special(X, :basis_by_degree => ans)
-  end
-  return get_special(X, :basis_by_degree)
-end
-
 @doc Markdown.doc"""    basis(k::Int, X::AbsVariety)
 Return an additive basis of the Chow ring of $X$ in codimension $k$."""
-basis(k::Int, X::AbsVariety) = basis_by_degree(X)[k+1]
+basis(k::Int, X::AbsVariety) = basis(X)[k+1]
 
 @doc Markdown.doc"""    betti(X::AbsVariety)
 Return the Betti numbers of the Chow ring of $X$. Note that these are not
 necessarily equal to the usual Betti numbers, i.e., the dimensions of
 (co)homologies."""
-betti(X::AbsVariety) = length.(basis_by_degree(X))
+betti(X::AbsVariety) = length.(basis(X))
 
 @doc Markdown.doc"""
     integral(x::ChRingElem)
@@ -736,7 +733,7 @@ the intersection matrix of the additive basis given by `basis(X)`.
 
 Return a `Nemo.fmpq_mat` if possible, or a `Matrix` otherwise.
 """
-function intersection_matrix(X::AbsVariety) intersection_matrix(basis(X)) end
+function intersection_matrix(X::AbsVariety) intersection_matrix(vcat(basis(X)...)) end
 function intersection_matrix(a::Vector{}, b=nothing)
   if b === nothing b = a end
   M = [integral(ai*bj) for ai in a, bj in b]
@@ -747,28 +744,31 @@ function intersection_matrix(a::Vector{}, b=nothing)
   end
 end
 
-@doc Markdown.doc"""    dual_basis(X::AbsVariety)
-Compute the dual basis with respect to the additive basis given by `basis(X)`."""
-function dual_basis(X::AbsVariety)
-  n = X.dim
-  ans = Dict{RingElem, ChRingElem}()
-  # find dual using only classes in complementary dimensions
-  B = basis_by_degree(X)
-  for d in 0:(n+1)÷2
-    b_d = B[d+1]
-    b_comp = B[n-d+1]
-    M = Matrix(inv(intersection_matrix(b_comp, b_d)))
-    b_d_dual = M * b_comp
-    for (j,b) in enumerate(b_d)
-      ans[b.f] = b_d_dual[j]
-    end
-    b_comp_dual = M' * b_d
-    for (j,b) in enumerate(b_comp)
-      ans[b.f] = b_comp_dual[j]
-    end
+@doc Markdown.doc"""    dual_basis(k::Int, X::AbsVariety)
+Compute the dual basis of the additive basis in codimension $k$ given by
+`basis(k, X)` (the returned elements are therefore in codimension
+$\dim X-k$)."""
+function dual_basis(k::Int, X::AbsVariety)
+  d = get_special(X, :dual_basis)
+  if d === nothing
+    d = Dict{Int, Vector{ChRingElem}}()
+    set_special(X, :dual_basis => d)
   end
-  map(b -> ans[b.f], basis(X))
+  if !(k in keys(d))
+    B = basis(X)
+    b_k = B[k+1]
+    b_comp = B[X.dim-k+1]
+    M = Matrix(inv(intersection_matrix(b_comp, b_k)))
+    d[k] = M * b_comp
+    d[X.dim-k] = M' * b_k
+  end
+  return d[k]
 end
+
+@doc Markdown.doc"""    dual_basis(X::AbsVariety)
+Compute the dual basis with respect to the additive basis given by `basis(X)`,
+grouped by decreasing degree (i.e., decreasing codimension)."""
+dual_basis(X::AbsVariety) = [dual_basis(k, X) for k in 0:X.dim]
 
 # the parameter for truncation is usually the dimension, but can also be set
 # manually, which is used when computing particular Chern classes (without

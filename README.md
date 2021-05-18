@@ -1,4 +1,5 @@
 # IntersectionTheory
+[![](https://img.shields.io/badge/docs-blue.svg)](https://8d1h.github.io/IntersectionTheory/dev/)
 
 *IntersectionTheory* is a Julia package for doing computations in intersection theory, built on top of [Nemo](https://nemocas.org/) and [Singular.jl](https://github.com/oscar-system/Singular.jl).
 
