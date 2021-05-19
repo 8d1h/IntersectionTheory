@@ -22,7 +22,7 @@ dual(F::TnRep) = TnRep(-F.w)
 det(F::TnRep) = TnRep([sum(F.w)])
 ctop(F::TnRep) = prod(F.w)
 function chern(n::Int, F::TnRep)
-  sum([prod([F.w[i] for i in c], init=ZZ(1)) for c in combinations(F.n, n)], init=ZZ())
+  sum(prod(F.w[i] for i in c) for c in combinations(F.n, n))
 end
 function _sym(k::Int, n::Int)
   k == 0 && return [Int[]]
@@ -96,13 +96,13 @@ function symmetric_power(k::Int, F::TnBundle)
   l = _sym(k, F.rank)
   TnBundle(F.parent, binomial(F.rank+k-1, k), p -> (
     Fp = F.loc(p);
-    TnRep([sum([Fp.w[i] for i in c], init=ZZ()) for c in l])))
+    TnRep([sum(Fp.w[i] for i in c) for c in l])))
 end
 function exterior_power(k::Int, F::TnBundle)
   l = combinations(F.rank, k)
   TnBundle(F.parent, binomial(F.rank, k), p -> (
     Fp = F.loc(p);
-    TnRep([sum([Fp.w[i] for i in c], init=ZZ()) for c in l])))
+    TnRep([sum(Fp.w[i] for i in c) for c in l])))
 end
 
 # we want the same syntax `integral(chern(F))` as in Schubert calculus
