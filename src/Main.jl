@@ -789,12 +789,13 @@ end
 function _logg(x::ChRingElem)
   R = x.parent
   n = get_special(R, :variety_dim)
-  p = repeat([R(0)], n+1)
-  e = x[0:n]
-  for i in 1:n
-    p[i+1] = -ZZ(i)*e[i+1] - sum([e[j+1] * p[i-j+1] for j in 1:i-1], init=R(0))
+  n == 0 && return R()
+  e = x[1:n]
+  p = pushfirst!(repeat([R()], n-1), -e[1])
+  for i in 1:n-1
+    p[i+1] = -ZZ(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i)
   end
-  simplify(sum([(-1)^i//factorial(ZZ(i))*p[i+1] for i in 1:n], init=R(0)))
+  simplify(sum((-1)^i//factorial(ZZ(i))*p[i] for i in 1:n))
 end
 
 function inv(x::ChRingElem)
