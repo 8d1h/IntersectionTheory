@@ -29,7 +29,9 @@ mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
     new{V}(X, r, ch)
   end
   function AbsBundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT
-    new{V}(X, r, r + _logg(c), c)
+    F = new{V}(X, r)
+    F.chern = c
+    return F
   end
 end
 @doc Markdown.doc"""
@@ -43,11 +45,13 @@ bundle(X::V, ch::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
 bundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
 bundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
 
-==(F::AbsBundle, G::AbsBundle) = F.ch == G.ch
+==(F::AbsBundle, G::AbsBundle) = ch(F) == ch(G)
 
 @doc Markdown.doc"""    ch(F::AbsBundle)
 Return the Chern character."""
-ch(F::AbsBundle) = F.ch
+ch(F::AbsBundle) = (
+  if !isdefined(F, :ch) F.ch = F.rank + _logg(F.chern) end;
+  F.ch)
 
 @doc Markdown.doc"""
     chern(F::AbsBundle)
@@ -84,7 +88,7 @@ segre(k::Int, F::AbsBundle) = segre(F)[k]
 
 @doc Markdown.doc"""    todd(F::AbsBundle)
 Compute the Todd class."""
-todd(F::AbsBundle) = _todd(F.ch)
+todd(F::AbsBundle) = _todd(ch(F))
 
 @doc Markdown.doc"""    pontryagin(F::AbsBundle)
 Compute the total Pontryagin class."""
@@ -105,10 +109,10 @@ pontryagin(k::Int, F::AbsBundle) = pontryagin(F)[2k]
 Compute the holomorphic Euler characteristic $\chi(F)$, or the Euler pairing
 $\chi(F,G)$.
 """
-chi(F::AbsBundle) = integral(F.ch * todd(F.parent)) # Hirzebruch-Riemann-Roch
+chi(F::AbsBundle) = integral(ch(F) * todd(F.parent)) # Hirzebruch-Riemann-Roch
 chi(F::AbsBundle, G::AbsBundle) = begin
   F, G = _coerce(F, G)
-  integral(dual(F).ch * G.ch * todd(F.parent))
+  integral(ch(dual(F)) * ch(G) * todd(F.parent))
 end
 
 ###############################################################################
@@ -150,7 +154,7 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
     catch
     end
     if isdefined(X, :T) && isdefined(Y, :T)
-      f.T = AbsBundle(X, X.T.ch - fˣ(Y.T.ch))
+      f.T = AbsBundle(X, ch(X.T) - fˣ(ch(Y.T)))
     end
     return f
   end
@@ -182,7 +186,7 @@ todd(f::AbsVarietyHom) = todd(f.T)
 Compute the pullback of a Chow ring element $x$ or a bundle $F$ by a morphism $f$.
 """
 pullback(f::AbsVarietyHom, x::ChRingElem) = f.pullback(x)
-pullback(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.domain, f.pullback(F.ch))
+pullback(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.domain, f.pullback(ch(F)))
 
 @doc Markdown.doc"""
     pushforward(f::AbsVarietyHom, x::ChRingElem)
@@ -192,7 +196,7 @@ morphism $f$. For abstract bundles, the pushforward is derived, e.g., for a
 bundle $F$ it is understood as the alternating sum of all direct images.
 """
 pushforward(f::AbsVarietyHom, x::ChRingElem) = f.pushforward(x)
-pushforward(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.codomain, f.pushforward(F.ch * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
+pushforward(f::AbsVarietyHom, F::AbsBundle) = AbsBundle(f.codomain, f.pushforward(ch(F) * todd(f))) # Grothendieck-Hirzebruch-Riemann-Roch
 
 function identity_hom(X::V) where V <: AbsVarietyT
   AbsVarietyHom(X, X, gens(X.ring), map_from_func(identity, X.ring, X.ring))
@@ -487,7 +491,7 @@ function hilbert_polynomial(F::AbsBundle)
   I = Ideal(R, toR.(gens(X.ring.I)))
   R_ = ChRing(R, X.ring.w, I, :variety_dim => X.dim)
   ch_O_t = 1 + _logg(1 + t * R_(toR(O1.f)))
-  ch_F = R_(toR(F.ch.f))
+  ch_F = R_(toR(ch(F).f))
   td = R_(toR(todd(X).f))
   pt = R_(toR(X.point.f))
   hilb = constant_coefficient(div(ch_F * ch_O_t * td, pt).f)
@@ -584,20 +588,24 @@ end
 Return the dual bundle.
 """
 function dual(F::AbsBundle)
-  AbsBundle(F.parent, adams(-1, F.ch))
+  Fdual = AbsBundle(F.parent, adams(-1, ch(F)))
+  if isdefined(F, :chern)
+    Fdual.chern = adams(-1, chern(F))
+  end
+  return Fdual
 end
-+(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n + F.ch)
-*(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n * F.ch)
++(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n + ch(F))
+*(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n * ch(F))
 +(F::AbsBundle, n::Union{Scalar,RingElem}) = n + F
 *(F::AbsBundle, n::Union{Scalar,RingElem}) = n * F
--(F::AbsBundle) = AbsBundle(F.parent, -F.ch)
+-(F::AbsBundle) = AbsBundle(F.parent, -ch(F))
 
 @doc Markdown.doc"""
     det(F::AbsBundle)
     det(F::TnBundle)
 Return the determinant bundle.
 """
-det(F::AbsBundle) = AbsBundle(F.parent, 1, 1 + F.ch[1])
+det(F::AbsBundle) = AbsBundle(F.parent, 1, 1 + chern(1, F))
 function _coerce(F::AbsBundle, G::AbsBundle)
   X, Y = F.parent, G.parent
   X == Y && return F, G
@@ -615,7 +623,7 @@ end
 for O in [:(+), :(-), :(*)]
   @eval ($O)(F::AbsBundle, G::AbsBundle) = (
     (F, G) = _coerce(F, G);
-    AbsBundle(F.parent, $O(F.ch, G.ch)))
+    AbsBundle(F.parent, $O(ch(F), ch(G))))
 end
 hom(F::AbsBundle, G::AbsBundle) = dual(F) * G
 
@@ -625,11 +633,11 @@ hom(F::AbsBundle, G::AbsBundle) = dual(F) * G
 Return the $k$-th exterior power.
 """
 function exterior_power(k::Int, F::AbsBundle)
-  AbsBundle(F.parent, _wedge(k, F.ch)[end])
+  AbsBundle(F.parent, _wedge(k, ch(F))[end])
 end
 
 function exterior_power(F::AbsBundle)
-  AbsBundle(F.parent, sum([(-1)^(i-1) * w for (i, w) in enumerate(_wedge(F.rank, F.ch))]))
+  AbsBundle(F.parent, sum([(-1)^(i-1) * w for (i, w) in enumerate(_wedge(F.rank, ch(F)))]))
 end
 
 @doc Markdown.doc"""
@@ -638,14 +646,14 @@ end
 Return the $k$-th symmetric power. For an `AbsBundle`, $k$ can contain parameters.
 """
 function symmetric_power(k::Int, F::AbsBundle)
-  AbsBundle(F.parent, _sym(k, F.ch)[end])
+  AbsBundle(F.parent, _sym(k, ch(F))[end])
 end
 
 function symmetric_power(k::Scalar, F::AbsBundle)
   X = F.parent
   PF = proj(dual(F))
   p = PF.struct_map
-  AbsBundle(X, p.pushforward(sum((OO(PF, k).ch * todd(p))[0:PF.dim])))
+  AbsBundle(X, p.pushforward(sum((ch(OO(PF, k)) * todd(p))[0:PF.dim])))
 end
 
 @doc Markdown.doc"""
@@ -657,7 +665,7 @@ function schur_functor(λ::Vector{Int}, F::AbsBundle) schur_functor(Partition(λ
 function schur_functor(λ::Partition, F::AbsBundle)
   λ = conj(λ)
   X = F.parent
-  w = _wedge(sum(λ), F.ch)
+  w = _wedge(sum(λ), ch(F))
   S, ei = PolynomialRing(Singular.QQ, ["e$i" for i in 1:length(w)])
   e = i -> (i < 0) ? S(0) : ei[i+1]
   M = [e(λ[i]-i+j) for i in 1:length(λ), j in 1:length(λ)]
@@ -921,7 +929,7 @@ function section_zero_locus(F::AbsBundle; class::Bool=false)
     Z.point = Z(inv(degp) * p.f)
   end
   if isdefined(X, :T)
-    Z.T = AbsBundle(Z, Z((X.T.ch - F.ch).f))
+    Z.T = AbsBundle(Z, Z((ch(X.T) - ch(F)).f))
   end
   if isdefined(X, :O1)
     Z.O1 = Z(X.O1.f)
@@ -1067,13 +1075,15 @@ function abs_grassmannian(k::Int, n::Int; base::Ring=Singular.QQ, symbol::String
   d = k*(n-k)
   R, c = PolynomialRing(base, _parse_symbol(symbol, 1:k))
   AˣGr = ChRing(R, collect(1:k))
-  cQ = sum((-sum(c))^i for i in 1:n) # this is c(Q) since c(S)⋅c(Q) = 1
+  inv_c = AˣGr(sum((-sum(c))^i for i in 1:n)) # this is c(Q) since c(S)⋅c(Q) = 1
   # Q is of rank n-k: the vanishing of Chern classes in higher degrees provides all the relations for the Chow ring
-  AˣGr.I = std(Ideal(R, [x.f for x in AˣGr(cQ)[n-k+1:n]]))
+  cQ = sum(inv_c[1:n-k])
+  AˣGr.I = std(Ideal(R, [x.f for x in inv_c[n-k+1:n]]))
   Gr = AbsVariety(d, AˣGr)
   Gr.O1 = Gr(-c[1])
-  S = AbsBundle(Gr, k, 1+sum(c))
+  S = AbsBundle(Gr, k, 1 + sum(c))
   Q = OO(Gr)*n - S
+  Q.chern = 1 + cQ
   Gr.point = Gr((-1)^d*c[end]^(n-k))
   Gr.T = dual(S) * Q
   Gr.bundles = [S, Q]

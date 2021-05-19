@@ -15,7 +15,7 @@ variety
 ```
 ### Examples
 ```@repl repl
-X = variety(2, ["h", "c1", "c2"], [1, 1, 2])
+X, (h, c1, c2) = variety(2, ["h", "c1", "c2"], [1, 1, 2])
 Y, (E,) = variety(2, [3 => "c"])
 chern(E)
 Z = variety(2)
