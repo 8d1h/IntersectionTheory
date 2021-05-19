@@ -1,5 +1,5 @@
 # IntersectionTheory
-[![](https://img.shields.io/badge/docs-blue.svg)](https://8d1h.github.io/IntersectionTheory/dev/)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://8d1h.github.io/IntersectionTheory/dev/)
 
 *IntersectionTheory* is an early stage Julia package for doing computations in intersection theory, built on top of [Nemo](https://nemocas.org/) and [Singular.jl](https://github.com/oscar-system/Singular.jl).
 
@@ -12,7 +12,6 @@ in the future. Right now it can be installed as follows.
 julia> using Pkg
 julia> Pkg.add(url="https://github.com/8d1h/IntersectionTheory")
 ```
-**Note.** The installation is broken at the moment. [Here](https://github.com/8d1h/IntersectionTheory/issues/1#issuecomment-843396948) is the work-around.
 
 ## Functionalities
 - `ChRing` and `ChRingElem` for handling graded rings with weights, and their quotients;
