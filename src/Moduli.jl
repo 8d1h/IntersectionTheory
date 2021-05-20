@@ -97,6 +97,7 @@ function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=Singular.QQ)
   X.point = chern(X.dim, (m*q-n)*E - m*F)
   X.bundles = [F, E]
   set_special(X, :alg => true)
+  set_special(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on a $(q)-dim vector space")
   X
 end
 
@@ -130,6 +131,7 @@ function matrix_moduli(V::AbsBundle, m::Int, n::Int)
   X.T = pullback(p, S.T) + p.T
   X.point = pullback(p, S.point) * chern(X.dim - S.dim, (m*q-n)*E - m*F)
   X.bundles = [F, E]
+  set_special(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on $V")
   X
 end
 

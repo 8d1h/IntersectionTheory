@@ -159,7 +159,19 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   Bl.T.chern = simplify(f.pullback(chern(Y.T)) + j.pushforward(g.pullback(chern(X.T)) * α))
   set_special(PN, :projections => [j, g])
   set_special(Bl, :exceptional_divisor => PN)
+  set_special(Bl, :description => "Blowup of $Y with center $X")
   return Bl, PN
+end
+
+function blowup_points(n::Int, X::AbsVariety; symbol::String="e")
+  Bl = X
+  symbs = _parse_symbol(symbol, 1:n)
+  for i in 1:n
+    Bl = blowup(point() → Bl, symbol=symbs[i])[1]
+  end
+  set_special(Bl, :description => "Blowup of $X at $n points")
+  Bl.struct_map = hom(Bl, X)
+  return Bl
 end
 
 ###############################################################################
@@ -217,6 +229,7 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   AˣY⁺ = ChRing(RY⁺, vcat(degs, AˣY.w), Ideal(RY⁺, rels...))
   Y⁺ = AbsVariety(Y.dim, AˣY⁺)
   # trim!(Y⁺.ring) TODO is this necessary?
+  set_special(Y⁺, :description => "$Y")
   fₓ = map_from_func(x -> error("not defined"), Y⁺.ring, Y.ring)
   f = AbsVarietyHom(Y⁺, Y, Y⁺.(y), fₓ)
   Y⁺.struct_map = f

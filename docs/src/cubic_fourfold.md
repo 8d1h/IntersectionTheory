@@ -63,10 +63,7 @@ pushforward(j, ctop(-j.T))
 We compute with a more explicit surface. A degree-5 del Pezzo surface can be
 constructed as the projective plane blown up at 4 points.
 ```@repl repl
-S = proj(2)
-for i in 1:4
-  S = blowup(point() → S, symbol="E$i")[1]
-end
+S = blowup_points(4, proj(2))
 basis(S)
 ```
 It can be embedded in a special cubic fourfold $Y_1$ via the anti-canonical

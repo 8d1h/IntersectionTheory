@@ -568,6 +568,7 @@ function *(X::AbsVariety, Y::AbsVariety)
     set_special(XY, :alg => true)
   end
   set_special(XY, :projections => [p, q])
+  set_special(XY, :description => "Product of $X and $Y")
   return XY
 end
 
@@ -939,6 +940,7 @@ function section_zero_locus(F::AbsBundle; class::Bool=false)
   i = AbsVarietyHom(Z, X, Z.(gens(R.R)), iₓ)
   i.T = pullback(i, -F)
   Z.struct_map = i
+  set_special(Z, :description => "Zero locus of a section of $F")
   return Z
 end
 
@@ -949,7 +951,10 @@ Construct the complete intersection in $X$ of general hypersurfaces with
 degrees $d_1,\dots,d_k$.
 """
 complete_intersection(X::AbsVariety, degs::Int...) = complete_intersection(X, collect(degs))
-complete_intersection(X::AbsVariety, degs::Vector{Int}) = section_zero_locus(sum(OO(X, d) for d in degs))
+complete_intersection(X::AbsVariety, degs::Vector{Int}) = (
+  Y = section_zero_locus(sum(OO(X, d) for d in degs));
+  set_special(Y, :description => "Complete intersection of degree $(tuple(degs...)) in $X");
+  Y)
 
 @doc Markdown.doc"""
     degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle)
@@ -974,6 +979,7 @@ function degeneracy_locus(k::Int, F::AbsBundle, G::AbsBundle; class::Bool=false)
   S = Gr.bundles[1]
   D = section_zero_locus(dual(S) * G)
   D.struct_map = D → F.parent # skip the flag variety
+  set_special(D, :description => "Degeneracy locus of rank $k from $F to $G")
   return D
 end
 

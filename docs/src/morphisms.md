@@ -61,22 +61,19 @@ Consider a cubic surface $S$. We can build it in two ways:
 - We can build it as a (hyper)surface in $\mathbf P^3$, then in codimension 1
   we only get the class of a (hyper)plane section.
 ```@repl repl
-S1 = section_zero_locus(OO(proj(3), 3))
+S1 = complete_intersection(proj(3), 3)
 basis(S1)
 ```
 - We can realize it as $\mathbf P^2$ blown up at 6 points, so the cohomology is
   entirely algebraic with Betti numbers 1,7,1.
 ```@repl repl
-S2 = proj(2)
-for i in 1:6
-  S2 = blowup(point() → S2, symbol="e$i")[1]
-end
+S2 = blowup_points(6, proj(2))
 basis(S2)
 ```
 The linear system on $S_2$ that provides the embedding into $\mathbf P^3$ can
 be given by $H:=3h-\sum e_i$.
 ```@repl repl
-e, h = gens(S2.ring)[1:6], gens(S2.ring)[end]
+e, h = gens(S2)[1:6], gens(S2)[end]
 H = 3h - sum(e)
 chi(OO(S2, H))
 integral(H^2)
