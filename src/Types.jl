@@ -142,14 +142,14 @@ function total_degree(x::ChRingElem)
   R = x.parent
   f = R(x.f, reduce=true).f
   f == 0 && return 0
-  max([R.w' * Singular.degrees(t) for t in Singular.terms(f)]...)
+  max([sum(R.w .* Singular.degrees(t)) for t in Singular.terms(f)]...)
 end
 
 function ishomogeneous(x::ChRingElem)
   R = x.parent
   f = R(x.f, reduce=true).f
   f == 0 && return true
-  degs = [R.w' * Singular.degrees(t) for t in Singular.terms(f)]
+  degs = [sum(R.w .* Singular.degrees(t)) for t in Singular.terms(f)]
   all(d -> d==degs[1], degs)
 end
 
@@ -168,7 +168,7 @@ function Base.getindex(x::ChRingElem, n::Int)
   f = R(x.f, reduce=true).f
   ans = R(0)
   for t in Singular.terms(f)
-    if R.w' * Singular.degrees(t) == n
+    if sum(R.w .* Singular.degrees(t)) == n
       ans += t end
   end
   ans

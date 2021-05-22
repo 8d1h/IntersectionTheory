@@ -261,7 +261,7 @@ end
   M, g, pf = IntersectionTheory._pushfwd(f)
   @test length(g) == 6
   x = s^3 + 5s*t + t^20 # random element from B
-  @test g' * f.salg.(pf(x.f)) == x.f
+  @test sum(g .* f.salg.(pf(x.f))) == x.f
    
   A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [4,4,2,1])
   B = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["s","t","u"])[1], [1,1,1])
@@ -270,7 +270,7 @@ end
   M, g, pf = IntersectionTheory._pushfwd(f)
   @test length(g) == 8
   x = s^2 + 2s*t + 3s*t*u + t^2*u + 20t*u + u^20 # random element from B
-  @test g' * f.salg.(pf(x.f)) == x.f
+  @test sum(g .* f.salg.(pf(x.f))) == x.f
 end
 
 # testset borrowed from Schubert2
