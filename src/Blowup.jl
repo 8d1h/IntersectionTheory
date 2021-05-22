@@ -93,7 +93,7 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   RBl = PolynomialRing(Y.base, syms)[1]
   E, y = gens(RBl)[1:n], gens(RBl)[n+1:end]
   fˣ = Singular.AlgebraHomomorphism(RY, RBl, y)
-  jₓgˣ = x -> E' * fˣ.(pf(x.f))
+  jₓgˣ = x -> sum(E .* fˣ.(pf(x.f)))
   rels = Singular.spoly[]
   # now we determine the relations in AˣBl
   # 1) relations from Y
@@ -193,7 +193,7 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   RY⁺ = PolynomialRing(Y.base, syms)[1]
   E, y = gens(RY⁺)[1:n], gens(RY⁺)[n+1:end]
   fˣ = Singular.AlgebraHomomorphism(RY, RY⁺, y)
-  jₓ = x -> E' * fˣ.(pf(x.f))
+  jₓ = x -> sum(E .* fˣ.(pf(x.f)))
   rels = Singular.spoly[]
   # we determine the relations in AˣY⁺
   # 1) relations from Y
