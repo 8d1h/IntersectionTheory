@@ -3,6 +3,7 @@ module IntersectionTheory
 import AbstractAlgebra
 import Nemo
 import Singular
+import GAP
 import Markdown
 
 import Base: +, -, *, ^, ==, div, zero, one, parent, mod
@@ -16,6 +17,10 @@ import AbstractAlgebra: @declare_other, set_special, get_special
 import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
 import Singular: ordering_dp, ordering_wp
+import GAP: GapObj
+import Base: collect, length
+import Nemo: perm
+const GG = GAP.Globals
 
 export Nemo, Singular
 export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ
@@ -35,6 +40,7 @@ export →
 export blowup, blowup_points
 export trim!
 export twisted_cubics, matrix_moduli
+export weyl_group, longest_element, perm
 
 include("Types.jl")
 include("Misc.jl")
@@ -43,5 +49,6 @@ include("Bott.jl")   # integration using Bott's formula
 include("Main.jl")   # basic constructions for Schubert calculus
 include("Blowup.jl") # blowup
 include("Moduli.jl") # moduli of matrices, twisted cubics
+include("Weyl.jl")   # weyl groups
 
 end

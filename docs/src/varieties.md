@@ -69,7 +69,7 @@ intersection_matrix
 ```
 Methods for Grassmannians.
 ```@docs
-schubert_class
+schubert_class(G::AbsVariety, λ::Int...)
 schubert_classes
 ```
 ### Examples

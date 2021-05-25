@@ -5,11 +5,14 @@ version = "0.1.0"
 
 [deps]
 AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
+GAP = "c863536a-3901-11e9-33e7-d5cd0df7b904"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Nemo = "2edaba10-b0f1-5616-af89-8c11ac63239a"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Singular = "bcd08a7b-43d2-5ff7-b6d4-c458787f915c"
 
 [compat]
+GAP = "0.5"
 Nemo = "0.23.0"
 Singular = "0.5.3"
 julia = "1.3"

@@ -1134,17 +1134,19 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   Rx, x = R["x"]
   gi = AˣFl(prod(c))[0:n]
   g = sum(gi[i+1].f * x^(n-i) for i in 0:n)
-  rels = [Nemo.coeff(mod(x^n, g), i) for i in 0:n-1]
+  q = mod(x^n, g)
+  rels = [Nemo.coeff(q, i) for i in 0:n-1]
   AˣFl.I = std(Ideal(R, rels))
   Fl = AbsVariety(d, AˣFl)
   Fl.bundles = [AbsBundle(Fl, r, ci) for (r,ci) in zip(ranks, c)]
   Fl.O1 = simplify(sum((i-1)*chern(1, Fl.bundles[i]) for i in 1:l))
-  Fl.point = prod(ctop(E)^sum(dims[i]) for (i,E) in enumerate(Fl.bundles[2:end]))
+  Fl.point = prod(ctop(E)^dims[i] for (i,E) in enumerate(Fl.bundles[2:end]))
   Fl.T = sum(dual(Fl.bundles[i]) * sum([Fl.bundles[j] for j in i+1:l]) for i in 1:l-1)
   Fl.struct_map = hom(Fl, point(base=base), [Fl(1)])
   set_special(Fl, :description => "Flag variety Flag$(tuple(dims...))")
   if l == 2 set_special(Fl, :grassmannian => :absolute) end
   set_special(Fl, :alg => true)
+  if all(r->r==1, ranks) set_special(Fl, :weyl_group => WeylGroup("A$(n-1)")) end
   return Fl
 end
 

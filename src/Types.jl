@@ -66,6 +66,8 @@ end
 
 (R::ChRing)(x::ChRingElem) = R(x.f)
 one(::Type{ChRingElem}) = 1
+# mul!(a::ChRingElem, b::ChRingElem, c::ChRingElem) = (a.f = b.f * c.f; a)
+# addeq!(a::ChRingElem, b::ChRingElem) = (a.f += b.f; a)
 
 @doc Markdown.doc"""
     ChAlgHom(A::ChRing, B::ChRing, image::Vector)
@@ -240,3 +242,58 @@ function add_rels!(R::ChRing, rels::Vector{Singular.spoly{T}}) where T
   R.I = isdefined(R, :I) ? std(R.I + Ideal(R.R, rels)) : std(Ideal(R.R, rels))
   return R
 end
+
+# copied from Oscar. I should really start migrating to Oscar...
+abstract type GAPGroup <: AbstractAlgebra.Group end
+abstract type GAPGroupElem{T<:GAPGroup} <: AbstractAlgebra.GroupElem end
+struct BasicGAPGroupElem{T<:GAPGroup} <: GAPGroupElem{T}
+  parent::T
+  X::GapObj
+end
+Base.show(io::IO, x::GAPGroupElem) =  print(io, GAP.gap_to_julia(GAP.Globals.StringViewObj(x.X)))
+Base.show(io::IO, x::GAPGroup) = print(io, GAP.gap_to_julia(GAP.Globals.StringViewObj(x.X)))
+*(x::BasicGAPGroupElem, y::BasicGAPGroupElem) = (@assert x.parent == y.parent; BasicGAPGroupElem(x.parent, x.X * y.X))
+
+function cyc(cycles::AbstractVector{T}...) where T <: Union{Base.Integer, fmpz}
+  if cycles == Tuple([])
+    cycles = [Int[]]
+  end
+  prod([GG.CycleFromList(GAP.julia_to_gap(Int.(c))) for c in cycles])
+end
+
+mutable struct WeylGroup <: GAPGroup
+  X::GapObj
+  gens::Vector{GapObj} # generators
+  p::GapObj # the presentation
+  typ::Char
+  @declare_other
+  function WeylGroup(str::String, I=nothing)
+    typ, n = str[1], parse(Int, str[2:end])
+    if typ == 'A'
+      gens = [cyc([i, i+1]) for i in 1:n]
+    elseif typ == 'B' || typ == 'C'
+      gens = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-1], cyc([n, 2n]))
+    elseif typ == 'D'
+      gens = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-2], cyc([n-1, n], [2n-1, 2n]), cyc([2n-1, n], [n-1, 2n]))
+    else
+      error("not implemented")
+    end
+    if I != nothing
+      gens = [gens[i] for i in intersect(1:n, I)]
+    end
+    G = GG.Group(gens...)
+    # WI = GG.Subgroup(G, GAP.julia_to_gap(GapObj[gens[i] for i in intersect(1:n, I)]))
+    p = GG.EpimorphismFromFreeGroup(G)
+    W = new(G, gens, p, typ)
+    return W
+  end
+end
+function weyl_group(str::String, I=nothing) WeylGroup(str, I) end
+
+const WeylGroupElem = BasicGAPGroupElem{WeylGroup}
+
+# XXX add check
+(W::WeylGroup)(x::GapObj) = WeylGroupElem(W, x)
+(W::WeylGroup)(cycs::AbstractVector{T}...) where T <: Union{Int, fmpz} = W(cyc(cycs...))
+(W::WeylGroup)(p::AbstractAlgebra.Generic.Perm{T}) where T <: Union{Int, fmpz} = W(cyc([c for c in Nemo.cycles(p)]...))
+# (W::WeylGroup)(x::PermGroupElem) = WeylGroupElem(W, x.X)
