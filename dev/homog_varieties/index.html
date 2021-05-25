@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Homogeneous varieties · IntersectionTheory.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">IntersectionTheory.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">About</a></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../intro/">Introduction</a></li><li><a class="tocitem" href="../constructors/">Constructors</a></li><li><a class="tocitem" href="../varieties/">Varieties</a></li><li class="is-active"><a class="tocitem" href>Homogeneous varieties</a><ul class="internal"><li><a class="tocitem" href="#Weyl-groups"><span>Weyl groups</span></a></li><li><a class="tocitem" href="#Schubert-classes"><span>Schubert classes</span></a></li></ul></li><li><a class="tocitem" href="../bundles/">Bundles</a></li><li><a class="tocitem" href="../morphisms/">Morphisms</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../cubic_fourfold/">Special cubic fourfolds</a></li><li><a class="tocitem" href="../curves_on_quintic/">Rational curves on a quintic threefold</a></li></ul></li><li><a class="tocitem" href="../dev/">Development notes</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Documentation</a></li><li class="is-active"><a href>Homogeneous varieties</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Homogeneous varieties</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/8d1h/IntersectionTheory/blob/master/docs/src/homog_varieties.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Homogeneous-varieties"><a class="docs-heading-anchor" href="#Homogeneous-varieties">Homogeneous varieties</a><a id="Homogeneous-varieties-1"></a><a class="docs-heading-anchor-permalink" href="#Homogeneous-varieties" title="Permalink"></a></h1><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>This part is still under developement. Right now only the complete flag variety <span>$\mathrm{Fl}(1,2,\dots,n)$</span> is available.</p></div></div><h2 id="Weyl-groups"><a class="docs-heading-anchor" href="#Weyl-groups">Weyl groups</a><a id="Weyl-groups-1"></a><a class="docs-heading-anchor-permalink" href="#Weyl-groups" title="Permalink"></a></h2><p>Elements are represented as permutation cycles.</p><h3 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; W = weyl_group(&quot;A3&quot;)
+Group([ (1,2), (2,3), (3,4) ])
+
+julia&gt; W()
+()
+
+julia&gt; W([1,2])
+(1,2)
+
+julia&gt; W(perm([2,1,3,4]))
+(1,2)
+
+julia&gt; length(ans)
+1
+
+julia&gt; basis(W)
+7-element Vector{Vector{IntersectionTheory.BasicGAPGroupElem{IntersectionTheory.WeylGroup}}}:
+ [()]
+ [(3,4), (2,3), (1,2)]
+ [(2,3,4), (2,4,3), (1,2)(3,4), (1,2,3), (1,3,2)]
+ [(2,4), (1,2,3,4), (1,2,4,3), (1,3,4,2), (1,3), (1,4,3,2)]
+ [(1,2,4), (1,3,4), (1,3)(2,4), (1,4,2), (1,4,3)]
+ [(1,3,2,4), (1,4), (1,4,2,3)]
+ [(1,4)(2,3)]
+
+julia&gt; betti(W)
+7-element Vector{Int64}:
+ 1
+ 3
+ 5
+ 6
+ 5
+ 3
+ 1
+
+julia&gt; ans == betti(flag(1,2,3,4))
+true
+
+julia&gt; longest_element(W)
+(1,4)(2,3)
+
+julia&gt; gens(W)
+3-element Vector{IntersectionTheory.BasicGAPGroupElem{IntersectionTheory.WeylGroup}}:
+ (1,2)
+ (2,3)
+ (3,4)
+
+julia&gt; W[2]
+(2,3)</code></pre><p>Parabolic subgroups.</p><pre><code class="language-julia-repl">julia&gt; weyl_group(&quot;A4&quot;, [1,2,4])
+Group([ (1,2), (2,3), (4,5) ])
+
+julia&gt; betti(weyl_group(&quot;A4&quot;)) ÷ betti(weyl_group(&quot;A4&quot;, [1,2,4]))
+7-element Vector{Int64}:
+ 1
+ 1
+ 2
+ 2
+ 2
+ 1
+ 1
+
+julia&gt; ans == betti(grassmannian(3, 5))
+true</code></pre><h2 id="Schubert-classes"><a class="docs-heading-anchor" href="#Schubert-classes">Schubert classes</a><a id="Schubert-classes-1"></a><a class="docs-heading-anchor-permalink" href="#Schubert-classes" title="Permalink"></a></h2><p>Let <span>$F:=\mathrm{Fl}(1,2,\dots,n)$</span> be a complete flag variety. Its Weyl group <span>$W$</span> is isomorphic to the symmetric group <span>$\mathfrak S_n$</span>. For an element <span>$w\in W$</span> of length <span>$l(w)$</span>, the Schubert variety <span>$X_w$</span> is a subvariety of dimension <span>$l(w)$</span>. The following returns its class <span>$\sigma_w:=[X_w]$</span> as an element of the Chow ring. The underlying polynomial is also known as a <em>Schubert polynomial</em>.</p><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.schubert_class-Tuple{IntersectionTheory.AbsVariety, IntersectionTheory.BasicGAPGroupElem{IntersectionTheory.WeylGroup}}" href="#IntersectionTheory.schubert_class-Tuple{IntersectionTheory.AbsVariety, IntersectionTheory.BasicGAPGroupElem{IntersectionTheory.WeylGroup}}"><code>IntersectionTheory.schubert_class</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">schubert_class(F::AbsVariety, w::WeylGroupElem)</code></pre><p>Return the Schubert class <span>$\sigma_w$</span> on a complete flag variety <span>$F$</span>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/6a8b643e347818366ff6e3136ca9ed9319babe6d/src/Weyl.jl#L66">source</a></section></article><h3 id="Examples-2"><a class="docs-heading-anchor" href="#Examples-2">Examples</a><a class="docs-heading-anchor-permalink" href="#Examples-2" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; F = flag(1,2,3,4,5)
+AbsVariety of dim 10
+
+julia&gt; W = weyl_group(F)
+Group([ (1,2), (2,3), (3,4), (4,5) ])
+
+julia&gt; w0 = longest_element(W)
+(1,5)(2,4)
+
+julia&gt; schubert_class(F, w0)
+1
+
+julia&gt; w = W([1,2], [3,4,5])
+(1,2)(3,4,5)
+
+julia&gt; schubert_class(F, w)
+c₃,₁^2*c₄,₁^3*c₅,₁^2 + c₃,₁^2*c₄,₁^2*c₅,₁^3</code></pre><p>The classes <span>$\sigma_w$</span> and <span>$\sigma_{ww_0}$</span> are Poincaré dual to each other.</p><pre><code class="language-julia-repl">julia&gt; integral(schubert_class(F, w) * schubert_class(F, w * w0))
+1</code></pre><p>For <span>$w$</span> of length 1, <span>$\sigma_w$</span> is the class of a rational curve.</p><pre><code class="language-julia-repl">julia&gt; integral(schubert_class(F, W[1]) * F.O1)
+1</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../varieties/">« Varieties</a><a class="docs-footer-nextpage" href="../bundles/">Bundles »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 25 May 2021 23:13">Tuesday 25 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
