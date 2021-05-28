@@ -1,13 +1,13 @@
 # IntersectionTheory
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://8d1h.github.io/IntersectionTheory/dev/)
 
-*IntersectionTheory* is an early stage Julia package for doing computations in intersection theory, built on top of [Nemo](https://nemocas.org/) and [Singular.jl](https://github.com/oscar-system/Singular.jl).
+*IntersectionTheory* is an early stage Julia package for doing computations in intersection theory, built using the components of [Oscar](https://oscar.computeralgebra.de/) ([Nemo](https://nemocas.org/), [Singular.jl](https://github.com/oscar-system/Singular.jl), and [GAP.jl](https://github.com/oscar-system/GAP.jl)).
 
-It's heavily inspired by the Macaulay2 package [*Schubert2*](https://faculty.math.illinois.edu/Macaulay2/doc/Macaulay2/share/doc/Macaulay2/Schubert2/html/) and the Sage library [*Chow*](https://www.math.sciences.univ-nantes.fr/~sorger/en/chow/). Some functionalities from [*Schubert3*](https://github.com/hiepdang/Sage) are also implemented. Compared to these, the advantage is the vast improvement in performance due to the efficiency of Julia, Nemo, and Singular.
+It's heavily inspired by the Macaulay2 package [*Schubert2*](https://faculty.math.illinois.edu/Macaulay2/doc/Macaulay2/share/doc/Macaulay2/Schubert2/html/) and the Sage library [*Chow*](https://www.math.sciences.univ-nantes.fr/~sorger/en/chow/). Some functionalities from [*Schubert3*](https://github.com/hiepdang/Sage) are also implemented. Compared to these, the advantage is the vast improvement in performance due to the efficiency of Julia and Oscar.
 
 ## Installation
-Hopefully this will be shipped with [Oscar](https://oscar.computeralgebra.de/)
-in the future. Right now it can be installed as follows.
+Hopefully this will be shipped with Oscar in the future. Right now it can be
+installed as follows.
 ```julia-repl
 julia> using Pkg
 julia> Pkg.add(url="https://github.com/8d1h/IntersectionTheory")

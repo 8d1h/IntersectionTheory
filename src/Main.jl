@@ -245,6 +245,8 @@ end
 
 trim!(X::AbsVariety) = (trim!(X.ring); X)
 
+variety(n::Int, R::ChRing) = AbsVariety(n, R)
+
 @doc Markdown.doc"""
     hom(X::AbsVariety, Y::AbsVariety, fˣ::Vector)
     hom(X::AbsVariety, Y::AbsVariety, fˣ::Vector, fₓ)
@@ -600,6 +602,7 @@ end
 +(F::AbsBundle, n::Union{Scalar,RingElem}) = n + F
 *(F::AbsBundle, n::Union{Scalar,RingElem}) = n * F
 -(F::AbsBundle) = AbsBundle(F.parent, -ch(F))
+^(F::AbsBundle, n::Int) = AbsBundle(F.parent, ch(F)^n)
 
 @doc Markdown.doc"""
     det(F::AbsBundle)
@@ -1146,7 +1149,10 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
   set_special(Fl, :description => "Flag variety Flag$(tuple(dims...))")
   if l == 2 set_special(Fl, :grassmannian => :absolute) end
   set_special(Fl, :alg => true)
-  if all(r->r==1, ranks) set_special(Fl, :weyl_group => WeylGroup("A$(n-1)")) end
+  if all(r->r==1, ranks)
+    set_special(Fl, :weyl_group => WeylGroup("A$(n-1)"))
+    set_special(Fl, :roots => -[c[i] - c[i+1] for i in 1:n-1])
+  end
   return Fl
 end
 

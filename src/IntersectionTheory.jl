@@ -41,6 +41,7 @@ export blowup, blowup_points
 export trim!
 export twisted_cubics, matrix_moduli
 export weyl_group, longest_element, perm
+export chow_ring, homogeneous_variety
 
 include("Types.jl")
 include("Misc.jl")

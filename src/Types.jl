@@ -243,6 +243,10 @@ function add_rels!(R::ChRing, rels::Vector{Singular.spoly{T}}) where T
   return R
 end
 
+function chow_ring(R::MPolyRing, w::Vector{Int}, rels::Vector{Singular.spoly{T}}) where T
+  ChRing(R, w, Ideal(R, rels))
+end
+
 # copied from Oscar. I should really start migrating to Oscar...
 abstract type GAPGroup <: AbstractAlgebra.Group end
 abstract type GAPGroupElem{T<:GAPGroup} <: AbstractAlgebra.GroupElem end
@@ -267,28 +271,68 @@ mutable struct WeylGroup <: GAPGroup
   p::GapObj # the presentation
   typ::Char
   @declare_other
-  function WeylGroup(str::String, I=nothing)
+  function WeylGroup(str::String, I=nothing; implementation::Symbol=:perm)
     typ, n = str[1], parse(Int, str[2:end])
-    if typ == 'A'
-      gens = [cyc([i, i+1]) for i in 1:n]
-    elseif typ == 'B' || typ == 'C'
-      gens = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-1], cyc([n, 2n]))
-    elseif typ == 'D'
-      gens = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-2], cyc([n-1, n], [2n-1, 2n]), cyc([2n-1, n], [n-1, 2n]))
+    # For type A, the permutation representation is meaningful: (i,i+1) is the
+    # transposition of coordinates.
+    # For type B,C,D, the permutation representation is simply faster than the
+    # matrix representation, e.g., when using `StructureDescription`
+    if typ in ['A', 'B', 'C', 'D'] && implementation == :perm
+      if typ == 'A'
+	gs = [cyc([i, i+1]) for i in 1:n]
+      elseif typ == 'B' || typ == 'C'
+	gs = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-1], cyc([n, 2n]))
+      elseif typ == 'D'
+	gs = push!([cyc([i, i+1], [n+i, n+i+1]) for i in 1:n-2], cyc([n-1, n], [2n-1, 2n]), cyc([2n-1, n], [n-1, 2n]))
+      end
+    elseif typ in ['E', 'F', 'G'] || implementation == :matrix
+      L = GG.SimpleLieAlgebra(GAP.julia_to_gap(string(typ)), n, GG.Rationals)
+      gs = GG.GeneratorsOfGroup(GG.WeylGroup(GG.RootSystem(L)))
+      gs = GAP.gap_to_julia(Vector{GapObj}, gs)
     else
       error("not implemented")
     end
     if I != nothing
-      gens = [gens[i] for i in intersect(1:n, I)]
+      gs = [gs[i] for i in intersect(1:n, I)]
     end
-    G = GG.Group(gens...)
-    # WI = GG.Subgroup(G, GAP.julia_to_gap(GapObj[gens[i] for i in intersect(1:n, I)]))
+    G = GG.Group(gs...)
+    # WI = GG.Subgroup(G, GAP.julia_to_gap(GapObj[gs[i] for i in intersect(1:n, I)]))
     p = GG.EpimorphismFromFreeGroup(G)
-    W = new(G, gens, p, typ)
+    W = new(G, gs, p, typ)
+    if typ == 'A'
+      action = (w, f) -> (
+	for i in _factor(w)
+	  f = Singular.permute_variables(f, [j==i ? i+1 : j==i+1 ? i : j for j in 1:n+1], parent(f))
+	end; f)
+    elseif typ == 'B' || typ == 'C'
+      action = (w, f) -> (
+	for i in _factor(w)
+	  if i < n
+	    f = Singular.permute_variables(f, [j==i ? i+1 : j==i+1 ? i : j for j in 1:n], parent(f))
+	  else
+	    x = gens(parent(f))
+	    f = f(x[1:end-1]..., -x[end])
+	  end
+	end; f)
+    elseif typ == 'D'
+      action = (w, f) -> (
+	for i in _factor(w)
+	  if i < n
+	    f = Singular.permute_variables(f, [j==i ? i+1 : j==i+1 ? i : j for j in 1:n], parent(f))
+	  else
+	    x = gens(parent(f))
+	    f = f(x[1:end-2]..., -x[end], -x[end-1])
+	  end
+	end; f)
+    else
+      action = nothing
+    #   error("not implemented")
+    end
+    set_special(W, :action => action)
     return W
   end
 end
-function weyl_group(str::String, I=nothing) WeylGroup(str, I) end
+function weyl_group(str::String, I=nothing; implementation::Symbol=:perm) WeylGroup(str, I, implementation=implementation) end
 
 const WeylGroupElem = BasicGAPGroupElem{WeylGroup}
 

@@ -8,23 +8,18 @@ function gens(W::WeylGroup)
   W.(W.gens)
 end
 
-(w::WeylGroupElem)(n::Int) = GG.OnPoints(n, w.X)
-
-function (Vector)(w::WeylGroupElem)
-  W = w.parent
-  W.typ == 'A' && return w.(1:length(W.gens)+1)
-  error("not implemented")
-end
-
 function ^(x::ChRingElem, w::WeylGroupElem)
-  @assert weyl_group(get_special(parent(x), :variety)) == w.parent
-  x.parent(Singular.permute_variables(x.f, Vector(w), x.parent.R))
+  W = w.parent
+  @assert weyl_group(get_special(parent(x), :variety)) == W
+  get_special(W, :action)(w, x.f)
 end
 
 # XXX the GAP code in Sage is faster
 # https://github.com/sagemath/sage/blob/master/src/sage/combinat/root_system/reflection_group_element.pyx
 function length(w::WeylGroupElem)
-  GG.Length(GG.PreImagesRepresentative(w.parent.p, w.X))
+  W = w.parent
+  GG.IsPermGroup(W.X) && return GG.Length(GG.PreImagesRepresentative(W.p, w.X))
+  GG.Length(GG.Factorization(W.X, w.X))
 end
 
 function _factor(w::WeylGroupElem)
@@ -73,16 +68,12 @@ function schubert_class(F::AbsVariety, w::WeylGroupElem)
   W = weyl_group(F)
   word = _factor(w)
   l = length(word)
-  c = gens(F)
-  # works for type A only
-  # Note the sign: `c` are first Chern classes of the tautological bundles,
-  # the Schubert polynomials should use the negative of these
-  roots = [-(c[i] - c[i+1]) for i in 1:length(c)-1]
+  roots = get_special(F, :roots)
   ans = F(0)
   for (x, y) in zip(basis(l, F), dual_basis(l, F))
     Ax = x
     for i in word
-      Ax = F((Ax - Ax^W[i]).f ÷ roots[i].f)
+      Ax = F((Ax.f - Ax^W[i]) ÷ roots[i])
     end
     ans += Ax * y
   end
@@ -95,4 +86,40 @@ function div(u::Vector, v::Vector)
   length(u) == length(v) && return [a]
   u = vcat(u[2:length(v)] - a * v[2:end], u[length(v)+1:end])
   pushfirst!(div(u, v), a)
+end
+
+function homogeneous_variety(G::String, I=nothing; base::Ring=Singular.QQ, symbol::String="c")
+  typ, n = G[1], parse(Int, G[2:end])
+  typ == 'A' && return flag(collect(1:n+1)..., base=base, symbol=symbol)
+  syms = _parse_symbol(symbol, 1:n)
+  ord = prod(ordering_dp(1) for i in 1:n)
+  R, w = PolynomialRing(base, syms, ordering=ord)
+  AˣX = ChRing(R, repeat([1], n))
+  if typ == 'B'
+    rels = [sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n]
+    AˣX.I = std(Ideal(R, rels))
+    X = AbsVariety(n^2, AˣX)
+    X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
+    X.T = sum(dual(X.bundles[i]) * ((2n+1) * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - symmetric_power(2, dual(sum(X.bundles)))
+    X.point = X(prod(1//2 * (-1)^i * w[i]^(2i-1) for i in 1:n))
+    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n]))
+  elseif typ == 'C'
+    rels = [sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n]
+    AˣX.I = std(Ideal(R, rels))
+    X = AbsVariety(n^2, AˣX)
+    X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
+    X.T = sum(dual(X.bundles[i]) * (2n * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - exterior_power(2, dual(sum(X.bundles)))
+    X.point = X(prod((-1)^i * w[i]^(2i-1) for i in 1:n))
+    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], 2w[n]))
+  elseif typ == 'D'
+    rels = push!([sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n], prod(w))
+    AˣX.I = std(Ideal(R, rels))
+    X = AbsVariety(n^2-n, AˣX)
+    X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
+    X.T = sum(dual(X.bundles[i]) * (2n * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - symmetric_power(2, dual(sum(X.bundles)))
+    X.point = 2X(prod(1//2 * (-w[i]^2)^(i-1) for i in 1:n))
+    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n-1] + w[n]))
+  end
+  set_special(X, :weyl_group => weyl_group(G))
+  return X
 end

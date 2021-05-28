@@ -78,6 +78,15 @@ twisted_cubics_on_cubic_fourfold
     The various `twisted_cubics` functions produce the same result as *Chow*,
     however I cannot reproduce the intersection numbers found by Schubert.
     More investigation is needed.
+### Examples
+A general degree-30 K3 surface can be realized as a zero locus on $N(4;2,3)$,
+by results of Mukai.
+```@repl repl
+X = matrix_moduli(4,2,3)
+S = section_zero_locus(2dual(sum(bundles(X))))
+chi(OO(S)), euler(S), chern(1, S) # the numerical invariants of a K3 surface
+S.O1 = -basis(1, S)[1]; degree(S)
+```
 
 ## Others
 ```@docs
