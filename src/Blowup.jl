@@ -160,9 +160,16 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   set_special(PN, :projections => [j, g])
   set_special(Bl, :exceptional_divisor => PN)
   set_special(Bl, :description => "Blowup of $Y with center $X")
+  if get_special(X, :alg) == true && get_special(Y, :alg) == true
+    set_special(Bl, :alg => true)
+  end
   return Bl, PN
 end
 
+@doc Markdown.doc"""
+    blowup_points(n::Int, X::AbsVariety)
+Construct the blowup of $X$ at $n$ points.
+"""
 function blowup_points(n::Int, X::AbsVariety; symbol::String="e")
   Bl = X
   symbs = _parse_symbol(symbol, 1:n)
@@ -171,6 +178,9 @@ function blowup_points(n::Int, X::AbsVariety; symbol::String="e")
   end
   set_special(Bl, :description => "Blowup of $X at $n points")
   Bl.struct_map = hom(Bl, X)
+  if get_special(X, :alg) == true
+    set_special(Bl, :alg => true)
+  end
   return Bl
 end
 

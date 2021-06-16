@@ -543,6 +543,12 @@ polarization, $X\times Y$ will be endowed with the polarization of the Segre
 embedding.
 """
 function *(X::AbsVariety, Y::AbsVariety)
+  prod_cache = get_special(X, :prod_cache)
+  prod_cache !== nothing && Y in keys(prod_cache) && return prod_cache[Y]
+  if prod_cache === nothing
+    prod_cache = Dict{AbsVariety, AbsVariety}()
+    set_special(X, :prod_cache => prod_cache)
+  end
   @assert X.base == Y.base
   base = X.base
   A, B = X.ring, Y.ring
@@ -571,7 +577,18 @@ function *(X::AbsVariety, Y::AbsVariety)
   end
   set_special(XY, :projections => [p, q])
   set_special(XY, :description => "Product of $X and $Y")
+  prod_cache[Y] = XY
   return XY
+end
+
+@doc Markdown.doc"""
+    graph(f::AbsVarietyHom)
+Given a morphism $f: X\to Y$, construct $i:\Gamma_f\to X\times Y$, the
+inclusion of the graph into the product.
+"""
+function graph(f::AbsVarietyHom)
+  X, Y = f.domain, f.codomain
+  hom(X, X * Y, vcat(gens(X), f.pullback.image))
 end
 
 ###############################################################################

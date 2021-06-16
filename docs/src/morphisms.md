@@ -53,6 +53,8 @@ D = proj(2) # the diagonal
 i = hom(D, PxP, [D.O1, D.O1])
 pushforward(i, D(1)) # the class of the diagonal
 ```
+The diagonal is a special case of `graph`: it is the graph of the identity
+morphism (see below).
 #### A "non-algebraic" example
 Here is an example to illustrate what can go wrong when we try to pushforward
 "non-algebraic" classes, i.e., classes that are not present.
@@ -144,12 +146,29 @@ tangent_bundle(f::AbsVarietyHom)
 cotangent_bundle(f::AbsVarietyHom)
 todd(f::AbsVarietyHom)
 ```
+## Graph of a morphism
+```@docs
+graph
+```
+### Examples
+The graph of the identity morphism is the diagonal.
+```@repl repl
+P1, P2 = proj(2, symbol="h"), proj(2, symbol="k")
+id = hom(P1, P2, [P1.O1])
+i = graph(id)
+pushforward(i, P1(1))
+```
 ## Blowup
 ```@docs
 blowup
 ```
 Note that the exceptional divisor is returned as an abstract variety. To get
 its class in the blowup, we can use `pushforward(E → Bl, E(1))`.
+
+We also have the following for convenience.
+```@docs
+blowup_points
+```
 ### Examples
 ```@repl repl
 P = proj(2)
@@ -158,6 +177,7 @@ euler(Bl)
 e = pushforward(E → Bl, E(1))
 integral(e^2)
 ```
+### [Examples](@id steiner)
 Here is the solution to Steiner's problem.
 ```@repl repl
 P2, P5 = proj(2), proj(5)

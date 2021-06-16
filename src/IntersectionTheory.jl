@@ -37,7 +37,7 @@ export hilbert_polynomial #, todd_polynomial
 export section_zero_locus, complete_intersection, degeneracy_locus
 export schubert_class, schubert_classes
 export →
-export blowup, blowup_points
+export blowup, blowup_points, graph
 export trim!
 export twisted_cubics, matrix_moduli
 export weyl_group, longest_element, perm
