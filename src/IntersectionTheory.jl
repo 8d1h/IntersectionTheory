@@ -12,8 +12,8 @@ import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli
 import Nemo: Ring, RingElem, MPolyRing, mul!, addeq!
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
-import AbstractAlgebra.Generic: Partition, subscriptify, combinations, integral, partitions, FunctionalMap
-import AbstractAlgebra: @declare_other, set_special, get_special
+import AbstractAlgebra.Generic: Partition, subscriptify, integral, partitions, FunctionalMap
+import AbstractAlgebra: @declare_other, set_special, get_special, combinations
 import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
 import Singular: ordering_dp, ordering_wp
