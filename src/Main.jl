@@ -47,7 +47,8 @@ bundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, 
 
 ==(F::AbsBundle, G::AbsBundle) = ch(F) == ch(G)
 
-@doc Markdown.doc"""    ch(F::AbsBundle)
+@doc Markdown.doc"""
+    ch(F::AbsBundle)
 Return the Chern character."""
 ch(F::AbsBundle) = (
   if !isdefined(F, :ch) F.ch = F.rank + _logg(F.chern) end;
@@ -78,19 +79,23 @@ Compute the top Chern class.
 """
 ctop(F::AbsBundle) = chern(F.rank, F)
 
-@doc Markdown.doc"""    segre(F::AbsBundle)
+@doc Markdown.doc"""
+    segre(F::AbsBundle)
 Compute the total Segre class."""
 segre(F::AbsBundle) = inv(chern(F))
 
-@doc Markdown.doc"""    segre(k::Int, F::AbsBundle)
+@doc Markdown.doc"""
+    segre(k::Int, F::AbsBundle)
 Compute the $k$-th Segre class."""
 segre(k::Int, F::AbsBundle) = segre(F)[k]
 
-@doc Markdown.doc"""    todd(F::AbsBundle)
+@doc Markdown.doc"""
+    todd(F::AbsBundle)
 Compute the Todd class."""
 todd(F::AbsBundle) = _todd(ch(F))
 
-@doc Markdown.doc"""    pontryagin(F::AbsBundle)
+@doc Markdown.doc"""
+    pontryagin(F::AbsBundle)
 Compute the total Pontryagin class."""
 function pontryagin(F::AbsBundle)
   n = F.parent.dim
@@ -99,7 +104,8 @@ function pontryagin(F::AbsBundle)
   sum([(-1)^i*comps[2i+1] for i in 0:n÷2])
 end
 
-@doc Markdown.doc"""    pontryagin(k::Int, F::AbsBundle)
+@doc Markdown.doc"""
+    pontryagin(k::Int, F::AbsBundle)
 Compute the $k$-th Pontryagin class."""
 pontryagin(k::Int, F::AbsBundle) = pontryagin(F)[2k]
 
@@ -164,19 +170,23 @@ mutable struct AbsVarietyHom{V1 <: AbsVarietyT, V2 <: AbsVarietyT} <: VarietyHom
   end
 end
 
-@doc Markdown.doc"""    dim(f::AbsVarietyHom)
+@doc Markdown.doc"""
+    dim(f::AbsVarietyHom)
 Return the relative dimension."""
 dim(f::AbsVarietyHom) = f.dim
 
-@doc Markdown.doc"""    tangent_bundle(f::AbsVarietyHom)
+@doc Markdown.doc"""
+    tangent_bundle(f::AbsVarietyHom)
 Return the relative tangent bundle."""
 tangent_bundle(f::AbsVarietyHom) = f.T
 
-@doc Markdown.doc"""    cotangent_bundle(f::AbsVarietyHom)
+@doc Markdown.doc"""
+    cotangent_bundle(f::AbsVarietyHom)
 Return the relative cotangent bundle."""
 cotangent_bundle(f::AbsVarietyHom) = dual(f.T)
 
-@doc Markdown.doc"""    todd(f::AbsVarietyHom)
+@doc Markdown.doc"""
+    todd(f::AbsVarietyHom)
 Compute the Todd class of the relative tangent bundle."""
 todd(f::AbsVarietyHom) = todd(f.T)
 
@@ -222,7 +232,8 @@ end
 #
 # AbsVariety
 #
-@doc Markdown.doc"""    AbsVariety(n::Int, R::ChRing)
+@doc Markdown.doc"""
+    AbsVariety(n::Int, R::ChRing)
 The type of an abstract variety."""
 mutable struct AbsVariety <: AbsVarietyT
   dim::Int
@@ -321,21 +332,20 @@ gens(X::AbsVariety) = gens(X.ring)
 @doc Markdown.doc"""
     OO(X::AbsVariety)
     OO(X::TnVariety)
-
 Return the trivial bundle $\mathcal O_X$ on $X$.
 """
 OO(X::AbsVariety) = AbsBundle(X, X(1))
 @doc Markdown.doc"""
     OO(X::AbsVariety, n)
     OO(X::AbsVariety, D)
-
 Return the line bundle $\mathcal O_X(n)$ on $X$ if $X$ has been given a
 polarization, or a line bundle $\mathcal O_X(D)$ with first Chern class $D$.
 """
 OO(X::AbsVariety, n::Scalar) = AbsBundle(X, 1, 1+n*X.O1)
 OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1+D[1])
 
-@doc Markdown.doc"""    degree(X::AbsVariety)
+@doc Markdown.doc"""
+    degree(X::AbsVariety)
 Compute the degree of $X$ with respect to its polarization."""
 degree(X::AbsVariety) = integral(X.O1^X.dim)
 
@@ -353,11 +363,13 @@ Return the cotangent bundle of a variety $X$.
 """
 cotangent_bundle(X::AbsVariety) = dual(X.T)
 
-@doc Markdown.doc"""    canonical_class(X::AbsVariety)
+@doc Markdown.doc"""
+    canonical_class(X::AbsVariety)
 Return the canonical class of a variety $X$."""
 canonical_class(X::AbsVariety) = -chern(1, X.T)
 
-@doc Markdown.doc"""    canonical_bundle(X::AbsVariety)
+@doc Markdown.doc"""
+    canonical_bundle(X::AbsVariety)
 Return the canonical bundle of a variety $X$."""
 canonical_bundle(X::AbsVariety) = det(cotangent_bundle(X))
 
@@ -385,20 +397,22 @@ chern(k::Int, X::AbsVariety) = chern(k, X.T)
 @doc Markdown.doc"""
     euler(X::AbsVariety)
     euler(X::TnVariety)
-
 Compute the Euler number of a variety $X$.
 """
 euler(X::AbsVariety) = integral(chern(X.T))
 
-@doc Markdown.doc"""    todd(X::AbsVariety)
+@doc Markdown.doc"""
+    todd(X::AbsVariety)
 Compute the Todd class of the tangent bundle of $X$."""
 todd(X::AbsVariety) = todd(X.T)
 
-@doc Markdown.doc"""    pontryagin(X::AbsVariety)
+@doc Markdown.doc"""
+    pontryagin(X::AbsVariety)
 Compute the total Pontryagin class of the tangent bundle of $X$."""
 pontryagin(X::AbsVariety) = pontryagin(X.T)
 
-@doc Markdown.doc"""    pontryagin(k::Int, X::AbsVariety)
+@doc Markdown.doc"""
+    pontryagin(k::Int, X::AbsVariety)
 Compute the $k$-th Pontryagin class of the tangent bundle of $X$."""
 pontryagin(k::Int, X::AbsVariety) = pontryagin(k, X.T)
 
@@ -454,25 +468,28 @@ for g in [:a_hat_genus, :l_genus]
   end
 end
 
-@doc Markdown.doc"""    a_hat_genus(k::Int, X::AbsVariety)
+@doc Markdown.doc"""
+    a_hat_genus(k::Int, X::AbsVariety)
 Compute the $k$-th $\hat A$ genus of a variety $X$."""
 a_hat_genus(k::Int, X::AbsVariety)
 
-@doc Markdown.doc"""    l_genus(k::Int, X::AbsVariety)
+@doc Markdown.doc"""
+    l_genus(k::Int, X::AbsVariety)
 Compute the $k$-th L genus of a variety $X$."""
 l_genus(k::Int, X::AbsVariety)
 
-@doc Markdown.doc"""    a_hat_genus(X::AbsVariety)
+@doc Markdown.doc"""
+    a_hat_genus(X::AbsVariety)
 Compute the top $\hat A$ genus of a variety $X$ of even dimension."""
 a_hat_genus(X::AbsVariety)
 
-@doc Markdown.doc"""    l_genus(X::AbsVariety)
+@doc Markdown.doc"""
+    l_genus(X::AbsVariety)
 Compute the top L genus of a variety $X$ of even dimension."""
 l_genus(X::AbsVariety)
 
-
-
-@doc Markdown.doc"""    signature(X::AbsVariety)
+@doc Markdown.doc"""
+    signature(X::AbsVariety)
 Compute the signature of a variety $X$ of even dimension."""
 signature(X::AbsVariety) = l_genus(X) # Hirzebruch signature theorem
 
@@ -526,7 +543,8 @@ function _hom(X::AbsVariety, Y::AbsVariety)
 end
 
 # morphisms for points are convenient, but are not desired when doing coercion
-@doc Markdown.doc"""    hom(X::AbsVariety, Y::AbsVariety)
+@doc Markdown.doc"""
+    hom(X::AbsVariety, Y::AbsVariety)
 Return a canonicallly defined morphism from $X$ to $Y$."""
 function hom(X::AbsVariety, Y::AbsVariety)
   get_special(Y, :point) !== nothing && return hom(X, Y, [X(0)]) # Y is a point
@@ -704,7 +722,8 @@ end
 #
 # Various computations
 #
-@doc Markdown.doc"""    basis(X::AbsVariety)
+@doc Markdown.doc"""
+    basis(X::AbsVariety)
 Return an additive basis of the Chow ring of $X$, grouped by increasing
 degree (i.e., increasing codimension)."""
 function basis(X::AbsVariety)
@@ -723,11 +742,13 @@ function basis(X::AbsVariety)
   return get_special(X, :basis)
 end
 
-@doc Markdown.doc"""    basis(k::Int, X::AbsVariety)
+@doc Markdown.doc"""
+    basis(k::Int, X::AbsVariety)
 Return an additive basis of the Chow ring of $X$ in codimension $k$."""
 basis(k::Int, X::AbsVariety) = basis(X)[k+1]
 
-@doc Markdown.doc"""    betti(X::AbsVariety)
+@doc Markdown.doc"""
+    betti(X::AbsVariety)
 Return the Betti numbers of the Chow ring of $X$. Note that these are not
 necessarily equal to the usual Betti numbers, i.e., the dimensions of
 (co)homologies."""
@@ -773,7 +794,8 @@ function intersection_matrix(a::Vector{}, b=nothing)
   end
 end
 
-@doc Markdown.doc"""    dual_basis(k::Int, X::AbsVariety)
+@doc Markdown.doc"""
+    dual_basis(k::Int, X::AbsVariety)
 Compute the dual basis of the additive basis in codimension $k$ given by
 `basis(k, X)` (the returned elements are therefore in codimension
 $\dim X-k$)."""
@@ -794,7 +816,8 @@ function dual_basis(k::Int, X::AbsVariety)
   return d[k]
 end
 
-@doc Markdown.doc"""    dual_basis(X::AbsVariety)
+@doc Markdown.doc"""
+    dual_basis(X::AbsVariety)
 Compute the dual basis with respect to the additive basis given by `basis(X)`,
 grouped by decreasing degree (i.e., decreasing codimension)."""
 dual_basis(X::AbsVariety) = [dual_basis(k, X) for k in 0:X.dim]
@@ -917,12 +940,20 @@ for (g,s) in [:a_hat_genus=>"p", :l_genus=>"p", :todd=>"c"]
   end
 end
 
-@doc Markdown.doc"""    todd(n::Int)
-Compute the (generic) $n$-th Todd genus.""" todd(n::Int)
-@doc Markdown.doc"""    l_genus(n::Int)
-Compute the (generic) $n$-th L genus.""" l_genus(n::Int)
-@doc Markdown.doc"""    a_hat_genus(n::Int)
-Compute the (generic) $n$-th $\hat A$ genus.""" a_hat_genus(n::Int)
+@doc Markdown.doc"""
+    todd(n::Int)
+Compute the (generic) $n$-th Todd genus."""
+todd(n::Int)
+
+@doc Markdown.doc"""
+    l_genus(n::Int)
+Compute the (generic) $n$-th L genus."""
+l_genus(n::Int)
+
+@doc Markdown.doc"""
+    a_hat_genus(n::Int)
+Compute the (generic) $n$-th $\hat A$ genus."""
+a_hat_genus(n::Int)
 
 @doc Markdown.doc"""
     section_zero_locus(F::AbsBundle)
@@ -1007,7 +1038,8 @@ end
 #
 # Projective spaces, Grassmannians, flag varieties
 #
-@doc Markdown.doc"""    point()
+@doc Markdown.doc"""
+    point()
 Construct a point as an abstract variety."""
 function point(; base::Ring=Singular.QQ)
   R, (p,) = PolynomialRing(base, ["p"])
@@ -1021,7 +1053,8 @@ function point(; base::Ring=Singular.QQ)
   return pt
 end
 
-@doc Markdown.doc"""    proj(n::Int)
+@doc Markdown.doc"""
+    proj(n::Int)
 Construct an abstract projective space of dimension $n$, parametrizing
 1-dimensional *subspaces* of a vector space of dimension $n+1$."""
 function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
@@ -1045,7 +1078,8 @@ function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   return P
 end
 
-@doc Markdown.doc"""    proj(F::AbsBundle)
+@doc Markdown.doc"""
+    proj(F::AbsBundle)
 Construct the projectivization of a bundle $F$, parametrizing 1-dimensional
 *subspaces*."""
 function proj(F::AbsBundle; symbol::String="h")
@@ -1176,7 +1210,6 @@ end
 @doc Markdown.doc"""
     flag(d::Int, F::AbsBundle)
     flag(dims::Vector{Int}, F::AbsBundle)
-
 Construct the relative flag variety of a bundle $F$, parametrizing
 flags of subspaces $V_{d_1}\subset V_{d_2}\subset\cdots\subset V_{d_k}$. The
 last dimension (i.e., the rank of $F$) can be omitted.
@@ -1240,7 +1273,6 @@ end
     schubert_class(G::AbsVariety, λ::Int...)
     schubert_class(G::AbsVariety, λ::Vector{Int})
     schubert_class(G::AbsVariety, λ::Partition)
-
 Return the Schubert class $\sigma_\lambda$ on a (relative) Grassmannian $G$.
 """
 function schubert_class(G::AbsVariety, λ::Int...) schubert_class(G, collect(λ)) end
@@ -1250,7 +1282,9 @@ function schubert_class(G::AbsVariety, λ::Vector{Int})
   (length(λ) > rank(G.bundles[1]) || sort(λ, rev=true) != λ) && error("the Schubert input is not well-formed")
   giambelli(λ, G.bundles[2])
 end
-@doc Markdown.doc"""    schubert_classes(m::Int, G::AbsVariety)
+
+@doc Markdown.doc"""
+    schubert_classes(m::Int, G::AbsVariety)
 Return all the Schubert classes in codimension $m$ on a (relative) Grassmannian $G$."""
 function schubert_classes(m::Int, G::AbsVariety)
   get_special(G, :grassmannian) === nothing && error("the variety is not a Grassmannian")
