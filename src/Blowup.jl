@@ -46,7 +46,7 @@ function _pushfwd(f::ChAlgHom)
   P = std(Singular.Module(R, gB..., gJ...)) # the presentation matrix, as an R-module
   # use a new weight to do elimination
   Rw = ChRing(R, vcat(repeat([1], b), repeat([0], a)))
-  inA = x -> total_degree(Rw(x)) == 0
+  inA = x -> total_degree(Rw(x)) <= 0
   M = hcat([(RtoA.(Array(P[i]))) for i in 1:Singular.ngens(P) if all(inA, Array(P[i]))]...)
   return M, gensB, pf
 end

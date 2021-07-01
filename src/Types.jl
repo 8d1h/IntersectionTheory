@@ -115,10 +115,37 @@ function *(f::ChAlgHom, g::ChAlgHom)
   ChAlgHom(A, C, g.(f.image))
 end
 
-# TODO print by homogeneous terms
-Base.show(io::IO, x::ChRingElem) = show(io, x.f)
-Base.show(io::IO, mi::MIME"text/latex", x::ChRingElem) = show(io, mi, x.f)
-Base.show(io::IO, mi::MIME"text/html", x::ChRingElem) = show(io, mi, x.f)
+for (func, par) in [:obj_to_string => ["(", ")"],
+		    :obj_to_latex_string => ["\\left(", "\\right)"]]
+  @eval function AbstractAlgebra.$func(x::ChRingElem)
+    x = simplify(x)
+    iszero(x) && return "0"
+    d = total_degree(x)
+    comps = [c.f for c in x[0:d] if !iszero(c)]
+    length(comps) == 1 && return AbstractAlgebra.$func(comps[1])
+    str = string()
+    plus = false
+    for c in comps # print by homogeneous terms
+      if plus
+	str *= " + "
+      else
+	plus = true
+      end
+      if length(c) > 1 || first(string(c)) == '-' # needs parentheses
+	str *= $par[1] * AbstractAlgebra.$func(c) * $par[2]
+      else
+	str *= AbstractAlgebra.$func(c)
+      end
+    end
+    str
+  end
+end
+Base.show(io::IO, x::ChRingElem) =
+  print(io, AbstractAlgebra.obj_to_string(x))
+Base.show(io::IO, mi::MIME"text/latex", x::ChRingElem) =
+  print(io, AbstractAlgebra.obj_to_latex_string(x))
+Base.show(io::IO, mi::MIME"text/html", x::ChRingElem) =
+  print(io, "\$" * AbstractAlgebra.obj_to_latex_string(x) * "\$")
 
 Nemo.elem_type(::Type{ChRing}) = ChRingElem
 
@@ -158,7 +185,7 @@ end
 function total_degree(x::ChRingElem)
   R = x.parent
   f = R(x.f, reduce=true).f
-  f == 0 && return 0
+  f == 0 && return -1
   max([sum(R.w .* Singular.degrees(t)) for t in Singular.terms(f)]...)
 end
 
