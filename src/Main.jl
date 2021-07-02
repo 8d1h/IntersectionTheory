@@ -418,14 +418,11 @@ pontryagin(k::Int, X::AbsVariety) = pontryagin(k, X.T)
 
 chi(p::Int, X::AbsVariety) = chi(exterior_power(p, dual(X.T))) # generalized Todd genus
 
+# introduced by Libgober-Wood
+# see https://arxiv.org/abs/1512.04321
 function todd_polynomial(n::Int)
-  X = variety(n, base=QQ)
-  R, z = X.ring.R["z"]
-  sum(chi(p, X).f * (z-1)^p for p in 0:n)
-end
-function todd_polynomial(n::Int, k::Int)
-  X = variety(n, base=QQ)
-  R, (z,) = Nemo.PowerSeriesRing(X.ring.R, k+1, ["z"])
+  X = variety(n)
+  R, z = Nemo.PolynomialRing(X.ring.R, "z")
   sum(chi(p, X).f * (z-1)^p for p in 0:n)
 end
 
