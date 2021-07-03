@@ -518,7 +518,7 @@ function hilbert_polynomial(F::AbsBundle)
 end
 hilbert_polynomial(X::AbsVariety) = hilbert_polynomial(OO(X))
 
-# find canonicallly defined morphism from X to Y
+# find canonically defined morphism from X to Y
 function _hom(X::AbsVariety, Y::AbsVariety)
   X == Y && return identity_hom(X)
   # first handle the case where X is a (fibered) product
@@ -542,7 +542,7 @@ end
 # morphisms for points are convenient, but are not desired when doing coercion
 @doc Markdown.doc"""
     hom(X::AbsVariety, Y::AbsVariety)
-Return a canonicallly defined morphism from $X$ to $Y$."""
+Return a canonically defined morphism from $X$ to $Y$."""
 function hom(X::AbsVariety, Y::AbsVariety)
   get_special(Y, :point) !== nothing && return hom(X, Y, [X(0)]) # Y is a point
   get_special(X, :point) !== nothing && return hom(X, Y, repeat([X(0)], length(gens(Y.ring)))) # X is a point
@@ -727,7 +727,7 @@ function basis(X::AbsVariety)
   # it is important for this to be cached!
   if get_special(X, :basis) === nothing
     try_trim = "Try use `trim!`."
-    !isdefined(X.ring, :I) && error("the ring has no ideal. "*try_trim)
+    isdefined(X.ring, :I) || error("the ring has no ideal. "*try_trim)
     Singular.dimension(X.ring.I) > 0 && error("the ideal is not 0-dimensional. "*try_trim)
     b = X.ring.(gens(Singular.kbase(X.ring.I)))
     ans = [ChRingElem[] for i in 0:X.dim]
@@ -967,8 +967,11 @@ function section_zero_locus(F::AbsBundle; class::Bool=false)
   # return only the class of Z in the chow ring of X
   class && return cZ
   I = Ideal(R.R, [cZ.f])
-  I = Singular.quotient(isdefined(R, :I) ? R.I : Ideal(R.R, [R.R()]), I)
-  AˣZ = ChRing(R.R, R.w, I)
+  if isdefined(R, :I)
+    AˣZ = ChRing(R.R, R.w, Singular.quotient(R.I, I))
+  else
+    AˣZ = ChRing(R.R, R.w)
+  end
   Z = AbsVariety(X.dim - F.rank, AˣZ)
   if isdefined(X, :point)
     ps = basis(Z.dim, Z) # the 0-cycles
