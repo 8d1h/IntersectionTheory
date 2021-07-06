@@ -13,6 +13,43 @@ julia> using Pkg
 julia> Pkg.add(url="https://github.com/8d1h/IntersectionTheory")
 ```
 
+To use it, type the following and wait for the package to load.
+```julia-repl
+julia> using IntersectionTheory
+```
+
+## Some examples
+```julia-repl
+julia> chern(proj(4))
+1 + 5*h + 10*h^2 + 10*h^3 + 5*h^4
+
+julia> todd(2)
+1//12*c₁^2 + 1//12*c₂
+
+julia> B = blowup_points(2, proj(2))
+AbsVariety of dim 2
+
+julia> canonical_class(B)
+e₂ + e₁ - 3*h
+
+julia> intersection_matrix(basis(1, B))
+[1    0    0]
+[0   -1    0]
+[0    0   -1]
+
+julia> S = complete_intersection(proj(3), 4)
+AbsVariety of dim 2
+
+julia> hilbert_polynomial(S)
+2*t^2 + 2
+
+julia> signature(S)
+-16
+
+julia> integral(ctop(symmetric_power(3, dual(bundles(grassmannian(2, 4))[1]))))
+27
+```
+
 ## Functionalities
 - `ChRing` and `ChRingElem` for handling graded rings with weights, and their quotients;
 - Basic constructions for doing intersection theory, including `AbsVariety` represented by the Chow ring, `AbsBundle` represented by Chern characters, `AbsVarietyHom` for morphisms, and various operators that can be used on them;
