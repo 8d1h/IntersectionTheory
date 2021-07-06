@@ -14,8 +14,6 @@ Base.show(io::IO, F::Bundle) = print(io, "$(typeof(F).name.name) of rank $(F.ran
 Base.show(io::IO, X::Variety) = print(io, "$(typeof(X).name.name) of dim $(X.dim)")
 Base.show(io::IO, f::VarietyHom) = print(io, "$(typeof(f).name.name) from $(f.domain) to $(f.codomain)")
 
-const Scalar = Union{Number, fmpz, fmpq, n_Q, n_transExt}
-
 @doc Markdown.doc"""
     ChRing(R::MPolyRing, w::Vector{Int})
     ChRing(R::MPolyRing, w::Vector{Int}, I::sideal)
@@ -56,7 +54,7 @@ function Base.show(io::IO, R::ChRing)
 end
 
 # allow reduction
-(R::ChRing)(f::Union{Scalar, RingElem}; reduce::Bool=false) = begin
+(R::ChRing)(f::RingElement; reduce::Bool=false) = begin
   if !(parent(f) == R.R) f = R.R(f) end
   if reduce && isdefined(R, :I) f = Singular.reduce(f, R.I) end
   ChRingElem(R, f)

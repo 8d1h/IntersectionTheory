@@ -117,8 +117,8 @@ for O in [:(+), :(-), :(*)]
     TnBundleChern(a.F, $O(a.c, b.c)))
 end
 ^(a::TnBundleChern, n::Int) = TnBundleChern(a.F, a.c^n)
-*(a::TnBundleChern, n::Scalar) = TnBundleChern(a.F, a.c*n)
-*(n::Scalar, a::TnBundleChern) = TnBundleChern(a.F, n*a.c)
+*(a::TnBundleChern, n::RingElement) = TnBundleChern(a.F, a.c*n)
+*(n::RingElement, a::TnBundleChern) = TnBundleChern(a.F, n*a.c)
 Base.show(io::IO, c::TnBundleChern) = print(io, "Chern class $(c.c) of $(c.F)")
 
 # create a ring to hold the chern classes of F

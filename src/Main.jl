@@ -11,13 +11,13 @@ The type of an abstract bundle.
 """
 mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
   parent::V
-  rank::Union{Int, RingElem}
+  rank::RingElement
   ch::ChRingElem
   chern::ChRingElem
   function AbsBundle(X::V, ch::RingElem) where V <: AbsVarietyT
     AbsBundle(X, X.ring(ch))
   end
-  function AbsBundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT
+  function AbsBundle(X::V, r::RingElement, c::RingElem) where V <: AbsVarietyT
     AbsBundle(X, r, X.ring(c))
   end
   function AbsBundle(X::V, ch::ChRingElem) where V <: AbsVarietyT
@@ -28,7 +28,7 @@ mutable struct AbsBundle{V <: AbsVarietyT} <: Bundle
     end
     new{V}(X, r, ch)
   end
-  function AbsBundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT
+  function AbsBundle(X::V, r::RingElement, c::ChRingElem) where V <: AbsVarietyT
     F = new{V}(X, r)
     F.chern = c
     return F
@@ -42,8 +42,8 @@ total Chern class.
 """
 bundle(X::V, ch::RingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
 bundle(X::V, ch::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, ch)
-bundle(X::V, r::Scalar, c::RingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
-bundle(X::V, r::Scalar, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
+bundle(X::V, r::RingElement, c::RingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
+bundle(X::V, r::RingElement, c::ChRingElem) where V <: AbsVarietyT = AbsBundle(X, r, c)
 
 ==(F::AbsBundle, G::AbsBundle) = ch(F) == ch(G)
 
@@ -326,7 +326,7 @@ function variety(n::Int; base::Ring=Singular.QQ)
   return X
 end
 
-(X::AbsVariety)(f::Union{Scalar, RingElem}) = X.ring(f, reduce=true)
+(X::AbsVariety)(f::RingElement) = X.ring(f, reduce=true)
 gens(X::AbsVariety) = gens(X.ring)
 
 @doc Markdown.doc"""
@@ -341,7 +341,7 @@ OO(X::AbsVariety) = AbsBundle(X, X(1))
 Return the line bundle $\mathcal O_X(n)$ on $X$ if $X$ has been given a
 polarization, or a line bundle $\mathcal O_X(D)$ with first Chern class $D$.
 """
-OO(X::AbsVariety, n::Scalar) = AbsBundle(X, 1, 1+n*X.O1)
+OO(X::AbsVariety, n::RingElement) = AbsBundle(X, 1, 1+n*X.O1)
 OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1+D[1])
 
 @doc Markdown.doc"""
@@ -629,10 +629,10 @@ function dual(F::AbsBundle)
   end
   return Fdual
 end
-+(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n + ch(F))
-*(n::Union{Scalar,RingElem}, F::AbsBundle) = AbsBundle(F.parent, n * ch(F))
-+(F::AbsBundle, n::Union{Scalar,RingElem}) = n + F
-*(F::AbsBundle, n::Union{Scalar,RingElem}) = n * F
++(n::RingElement, F::AbsBundle) = AbsBundle(F.parent, n + ch(F))
+*(n::RingElement, F::AbsBundle) = AbsBundle(F.parent, n * ch(F))
++(F::AbsBundle, n::RingElement) = n + F
+*(F::AbsBundle, n::RingElement) = n * F
 -(F::AbsBundle) = AbsBundle(F.parent, -ch(F))
 ^(F::AbsBundle, n::Int) = AbsBundle(F.parent, ch(F)^n)
 
@@ -685,7 +685,7 @@ function symmetric_power(k::Int, F::AbsBundle)
   AbsBundle(F.parent, _sym(k, ch(F))[end])
 end
 
-function symmetric_power(k::Scalar, F::AbsBundle)
+function symmetric_power(k::RingElement, F::AbsBundle)
   X = F.parent
   PF = proj(dual(F))
   p = PF.struct_map

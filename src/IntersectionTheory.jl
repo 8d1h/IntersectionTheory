@@ -9,7 +9,7 @@ import Markdown
 import Base: +, -, *, ^, ==, div, zero, one, parent, mod
 import Nemo: fmpz, fmpq, ZZ, QQ
 import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli
-import Nemo: Ring, RingElem, MPolyRing, mul!, addeq!
+import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
 import AbstractAlgebra.Generic: Partition, subscriptify, integral, partitions, FunctionalMap
