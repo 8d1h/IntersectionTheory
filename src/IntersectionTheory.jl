@@ -25,12 +25,12 @@ const GG = GAP.Globals
 export Nemo, Singular
 export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ
 export total_degree, ishomogeneous
-export proj, grassmannian, flag, point, variety, bundle
+export proj, grassmannian, flag, point, curve, variety, bundle
 export pullback, pushforward, hom
 export bundles, tangent_bundle, cotangent_bundle, canonical_bundle, canonical_class
 export exterior_power, symmetric_power, det, schur_functor
 export dim, degree, rank, basis, intersection_matrix, dual_basis
-export simplify, simplify!, inv, gens, domain, codomain, betti
+export simplify, simplify!, inv, base_ring, gens, domain, codomain, betti
 export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop, pontryagin
 export chern_number, chern_numbers, l_genus, a_hat_genus, signature
 export hilbert_polynomial #, todd_polynomial

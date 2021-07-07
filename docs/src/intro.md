@@ -27,9 +27,8 @@ product $A^k(X)\times A^l(X)\to A^{k+l}(X)$.
 Some remarks:
 - Since we work with rational coefficients, we will not be able to see any
   torsion classes.
-- For practical reasons, we can use Singular's `FunctionField` (of type
-  `N_FField`) as coefficients. This will allow us to introduce parameters and
-  do some symbolic computations.
+- For practical reasons, we can use Singular's `FunctionField` as coefficients.
+  This will allow us to introduce parameters and do some symbolic computations.
 - Usually the *rational equivalence* is used for defining the Chow ring. But
   this is too fine an equivalence for us: we are actually working with
   *numerical equivalence*, that is, we only care about the intersection numbers

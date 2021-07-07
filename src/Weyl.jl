@@ -88,7 +88,8 @@ function div(u::Vector, v::Vector)
   pushfirst!(div(u, v), a)
 end
 
-function homogeneous_variety(G::String, I=nothing; base::Ring=Singular.QQ, symbol::String="c")
+function homogeneous_variety(G::String, I=nothing; symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  base, param = _parse_base(base, param)
   typ, n = G[1], parse(Int, G[2:end])
   typ == 'A' && return flag(collect(1:n+1)..., base=base, symbol=symbol)
   syms = _parse_symbol(symbol, 1:n)
@@ -121,5 +122,5 @@ function homogeneous_variety(G::String, I=nothing; base::Ring=Singular.QQ, symbo
     set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n-1] + w[n]))
   end
   set_special(X, :weyl_group => weyl_group(G))
-  return X
+  return param == [] ? X : (X, param)
 end

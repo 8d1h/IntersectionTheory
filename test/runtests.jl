@@ -54,8 +54,7 @@ end
   @test chi(OO(C)) == 1//2 * c
 
   # generic variety with parameter
-  F, (g,) = FunctionField(Singular.QQ, ["g"])
-  C = variety(1, base=F)
+  C, g = variety(1, param="g")
   c = gens(C.ring)[1]
   trim!(C.ring)
   C.point = 1//(2 - 2g) * chern(1, C)
@@ -316,9 +315,9 @@ end
   @test integral(quad^2 * cubic) == 1
   
   # blowup twisted cubic, with parameters
-  F, (r, s, t) = FunctionField(Singular.QQ, ["r", "s", "t"])
-  P1 = proj(1, base=F)
-  P3 = proj(3, base=F)
+  param = ["r", "s", "t"]
+  P1, (r, s, t) = proj(1, param=param)
+  P3, _ = proj(3, param=param)
   i = hom(P1, P3, [3P1.O1])
   Bl, E = blowup(i)
   e = pushforward(E → Bl, E(1))
@@ -335,11 +334,9 @@ end
   @test simplify(e^5) != 0
   
   # blowup space curve of degree d and genus g
-  F, (r,s,t,d,g) = FunctionField(Singular.QQ, ["r", "s", "t", "d", "g"])
-  P3 = proj(3, base=F)
-  C = variety(1, base=F)
-  trim!(C.ring)
-  C.point = 1//(2-2g) * chern(1, C)
+  param = ["g", "d", "r", "s", "t"]
+  P3, (g,d,r,s,t) = proj(3, param=param)
+  C, _ = curve("g", param=param[2:end])
   i = hom(C, P3, [d * C.point])
   Bl, E = blowup(i)
   e = pushforward(E → Bl, E(1))

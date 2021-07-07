@@ -246,7 +246,7 @@ mutable struct AbsVariety <: AbsVarietyT
   struct_map::AbsVarietyHom
   @declare_other
   function AbsVariety(n::Int, R::ChRing)
-    base = R.R.base_ring
+    base = base_ring(R.R)
     X = new(n, R, base)
     set_special(R, :variety => X)
     set_special(R, :variety_dim => n)
@@ -284,10 +284,12 @@ Construct a generic variety of dimension $n$ with some classes in given degrees.
 
 Return the variety and the list of classes.
 """
-function variety(n::Int, symbols::Vector{String}, degs::Vector{Int}; base::Ring=Singular.QQ)
+function variety(n::Int, symbols::Vector{String}, degs::Vector{Int}; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  base, param = _parse_base(base, param)
   @assert length(symbols) > 0
   R = ChRing(PolynomialRing(base, symbols)[1], degs)
-  return AbsVariety(n, R), gens(R)
+  X = AbsVariety(n, R)
+  return param == [] ? (X, gens(R)) : (X, gens(R), param)
 end
 
 # generic variety with some bundles in given ranks
@@ -298,17 +300,19 @@ Construct a generic variety of dimension $n$ with some bundles of given ranks.
 
 Return the variety and the list of bundles.
 """
-function variety(n::Int, bundles::Vector{Pair{Int, T}}; base::Ring=Singular.QQ) where T
+function variety(n::Int, bundles::Vector{Pair{Int, T}}; base::Ring=QQ, param::Union{String, Vector{String}}=String[]) where T
   symbols = vcat([_parse_symbol(s,1:r) for (r,s) in bundles]...)
   degs = vcat([collect(1:r) for (r,s) in bundles]...)
-  X = variety(n, symbols, degs, base=base)[1]
+  ans = variety(n, symbols, degs, base=base, param=param)
+  X = ans[1]
+  param = length(ans) == 3 ? ans[3] : []
   i = 1
   X.bundles = AbsBundle[]
   for (r,s) in bundles
     push!(X.bundles, AbsBundle(X, r, 1 + sum(gens(X.ring)[i:i+r-1])))
     i += r
   end
-  return X, X.bundles
+  return param == [] ? (X, X.bundles) : (X, X.bundles, param)
 end
 
 # generic variety with tangent bundle
@@ -319,15 +323,37 @@ Construct a generic variety of dimension $n$ and define its tangent bundle.
 
 Return the variety.
 """
-function variety(n::Int; base::Ring=Singular.QQ)
-  n == 0 && return point()
-  X, (T,) = variety(n, [n=>"c"], base=base)
+function variety(n::Int; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  n == 0 && return point(base=base, param=param)
+  ans = variety(n, [n=>"c"], base=base, param=param)
+  X, (T,) = ans[1], ans[2]
+  param = length(ans) == 3 ? ans[3] : []
   X.T = T
-  return X
+  return param == [] ? X : (X, param)
+end
+
+@doc Markdown.doc"""
+    curve(g)
+Construct a curve of genus $g$. The genus can either be an integer or a string
+to allow symbolic computations."""
+function curve(g::Union{Int, String}; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  if g isa String
+    C, (p,), gp = variety(1, ["p"], [1], base=base, param=vcat([g], param))
+    g, param = gp[1], param isa String ? gp[2] : gp[2:end]
+  else
+    ans = variety(1, ["p"], [1], base=base, param=param)
+    C, (p,) = ans[1], ans[2]
+    param = length(ans) == 3 ? ans[3] : []
+  end
+  trim!(C)
+  C.point = p
+  C.T = bundle(C, 1 + (2-2g)p)
+  return param == [] ? C : (C, param)
 end
 
 (X::AbsVariety)(f::RingElement) = X.ring(f, reduce=true)
 gens(X::AbsVariety) = gens(X.ring)
+base_ring(X::AbsVariety) = X.base
 
 @doc Markdown.doc"""
     OO(X::AbsVariety)
@@ -341,8 +367,8 @@ OO(X::AbsVariety) = AbsBundle(X, X(1))
 Return the line bundle $\mathcal O_X(n)$ on $X$ if $X$ has been given a
 polarization, or a line bundle $\mathcal O_X(D)$ with first Chern class $D$.
 """
-OO(X::AbsVariety, n::RingElement) = AbsBundle(X, 1, 1+n*X.O1)
-OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1+D[1])
+OO(X::AbsVariety, n::RingElement) = AbsBundle(X, 1, 1 + X.base(n)*X.O1)
+OO(X::AbsVariety, D::ChRingElem) = AbsBundle(X, 1, 1 + D[1])
 
 @doc Markdown.doc"""
     degree(X::AbsVariety)
@@ -499,22 +525,22 @@ itself, with respect to the polarization $\mathcal O_X(1)$ on $X$.
 function hilbert_polynomial(F::AbsBundle)
   !isdefined(F.parent, :O1) && error("no polarization is specified for the variety")
   X, O1 = F.parent, F.parent.O1
-  # first coerce the coefficient ring to QQ then extend to QQ(t)
-  Qt, (t,) = FunctionField(Singular.QQ, ["t"])
-  R = parent(Singular.change_base_ring(Qt, X.ring.R()))
-  toQQ = x -> Singular.change_base_ring(Singular.QQ, x)
-  toR = x -> Singular.change_base_ring(Qt, toQQ(x), parent=R)
+  # extend the coefficient ring to QQ(t)
+  Qt, (t,) = PolynomialRing(X.base, ["t"])
+  Qt = Nemo.FractionField(Qt)
+  sQt = Singular.CoefficientRing(Qt)
+  toR = x -> Singular.change_base_ring(sQt, x)
+  R = parent(toR(X.ring.R()))
   I = Ideal(R, toR.(gens(X.ring.I)))
   R_ = ChRing(R, X.ring.w, I, :variety_dim => X.dim)
-  ch_O_t = 1 + _logg(1 + t * R_(toR(O1.f)))
+  ch_O_t = 1 + _logg(1 + sQt(t) * R_(toR(O1.f)))
   ch_F = R_(toR(ch(F).f))
   td = R_(toR(todd(X).f))
   pt = R_(toR(X.point.f))
-  hilb = constant_coefficient(div(ch_F * ch_O_t * td, pt).f)
+  hilb = Qt(constant_coefficient(div(ch_F * ch_O_t * td, pt).f))
   # convert back to a true polynomial
-  denom = Singular.n_transExt_to_spoly(denominator(hilb))
-  denom = constant_coefficient(denom)
-  return 1//denom * Singular.n_transExt_to_spoly(hilb)
+  denom = constant_coefficient(denominator(hilb))
+  return 1//denom * numerator(hilb)
 end
 hilbert_polynomial(X::AbsVariety) = hilbert_polynomial(OO(X))
 
@@ -777,8 +803,6 @@ end
 Compute the intersection matrix among entries of a vector $a$ of Chow ring
 elements, or between two vectors $a$ and $b$. For a variety $X$, this computes
 the intersection matrix of the additive basis given by `basis(X)`.
-
-Return a `Nemo.fmpq_mat` if possible, or a `Matrix` otherwise.
 """
 function intersection_matrix(X::AbsVariety) intersection_matrix(vcat(basis(X)...)) end
 function intersection_matrix(a::Vector{}, b=nothing)
@@ -787,7 +811,7 @@ function intersection_matrix(a::Vector{}, b=nothing)
   try
     return Nemo.matrix(QQ, M)
   catch
-    return M
+    return Nemo.matrix(parent(M[1, 1]), M)
   end
 end
 
@@ -1001,8 +1025,8 @@ end
 Construct the complete intersection in $X$ of general hypersurfaces with
 degrees $d_1,\dots,d_k$.
 """
-complete_intersection(X::AbsVariety, degs::Int...) = complete_intersection(X, collect(degs))
-complete_intersection(X::AbsVariety, degs::Vector{Int}) = (
+complete_intersection(X::AbsVariety, degs::RingElement...) = complete_intersection(X, collect(degs))
+complete_intersection(X::AbsVariety, degs::Vector{T}) where T <: RingElement = (
   Y = section_zero_locus(sum(OO(X, d) for d in degs));
   set_special(Y, :description => "Complete intersection of degree $(tuple(degs...)) in $X");
   Y)
@@ -1041,7 +1065,8 @@ end
 @doc Markdown.doc"""
     point()
 Construct a point as an abstract variety."""
-function point(; base::Ring=Singular.QQ)
+function point(; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  base, param = _parse_base(base, param)
   R, (p,) = PolynomialRing(base, ["p"])
   I = Ideal(R, [p])
   pt = AbsVariety(0, ChRing(R, [1], I))
@@ -1050,14 +1075,15 @@ function point(; base::Ring=Singular.QQ)
   pt.O1 = pt(0)
   set_special(pt, :description => "Point")
   set_special(pt, :point => true)
-  return pt
+  return param == [] ? pt : (pt, param)
 end
 
 @doc Markdown.doc"""
     proj(n::Int)
 Construct an abstract projective space of dimension $n$, parametrizing
 1-dimensional *subspaces* of a vector space of dimension $n+1$."""
-function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
+function proj(n::Int; symbol::String="h", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+  base, param = _parse_base(base, param)
   R, (h,) = PolynomialRing(base, [symbol])
   I = Ideal(R, [h^(n+1)])
   AˣP = ChRing(R, [1], I)
@@ -1075,7 +1101,7 @@ function proj(n::Int; base::Ring=Singular.QQ, symbol::String="h")
   set_special(P, :description => "Projective space of dim $n")
   set_special(P, :grassmannian => :absolute)
   set_special(P, :alg => true)
-  return P
+  return param == [] ? P : (P, param)
 end
 
 @doc Markdown.doc"""
@@ -1124,15 +1150,16 @@ $k$-dimensional subspaces of an $n$-dimensional vector space.
 Use the argument `bott=true` to construct the Grassmannian as a `TnVariety` for
 computing integrals using Bott's formula.
 """
-function grassmannian(k::Int, n::Int; bott::Bool=false, weights=:int, base::Ring=Singular.QQ, symbol::String="c")
+function grassmannian(k::Int, n::Int; bott::Bool=false, weights=:int, symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   # combine the interface for AbsVariety and TnVariety versions
   bott && return tn_grassmannian(k, n, weights=weights)
-  abs_grassmannian(k, n, base=base, symbol=symbol)
+  abs_grassmannian(k, n, symbol=symbol, base=base, param=param)
 end
 
-function abs_grassmannian(k::Int, n::Int; base::Ring=Singular.QQ, symbol::String="c")
+function abs_grassmannian(k::Int, n::Int; symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   @assert k < n
   d = k*(n-k)
+  base, param = _parse_base(base, param)
   R, c = PolynomialRing(base, _parse_symbol(symbol, 1:k))
   AˣGr = ChRing(R, collect(1:k))
   inv_c = AˣGr(sum((-sum(c))^i for i in 1:n)) # this is c(Q) since c(S)⋅c(Q) = 1
@@ -1151,7 +1178,7 @@ function abs_grassmannian(k::Int, n::Int; base::Ring=Singular.QQ, symbol::String
   set_special(Gr, :description => "Grassmannian Gr($k, $n)")
   set_special(Gr, :grassmannian => :absolute)
   set_special(Gr, :alg => true)
-  return Gr
+  return param == [] ? Gr : (Gr, param)
 end
 
 @doc Markdown.doc"""
@@ -1164,22 +1191,23 @@ flags of subspaces $V_{d_1}\subset V_{d_2}\subset\cdots\subset V_{d_k}=V$.
 Use the argument `bott=true` to construct the flag variety as a `TnVariety` for
 computing integrals using Bott's formula.
 """
-function flag(dims::Int...; bott::Bool=false, weights=:int, base::Ring=Singular.QQ, symbol::String="c")
+function flag(dims::Int...; bott::Bool=false, weights=:int, symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   # combine the interface for AbsVariety and TnVariety versions
   bott && return tn_flag(collect(dims), weights=weights)
-  abs_flag(collect(dims), base=base, symbol=symbol)
+  abs_flag(collect(dims), symbol=symbol, base=base, param=param)
 end
 
-function flag(dims::Vector{Int}; bott::Bool=false, weights=:int, base::Ring=Singular.QQ, symbol::String="c")
+function flag(dims::Vector{Int}; bott::Bool=false, weights=:int, symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   bott && return tn_flag(dims, weights=weights)
-  abs_flag(dims, base=base, symbol=symbol)
+  abs_flag(dims, symbol=symbol, base=base, param=param)
 end
 
-function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
+function abs_flag(dims::Vector{Int}; symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   n, l = dims[end], length(dims)
   ranks = pushfirst!([dims[i+1]-dims[i] for i in 1:l-1], dims[1])
   @assert all(r->r>0, ranks)
   d = sum(ranks[i] * sum(dims[end]-dims[i]) for i in 1:l-1)
+  base, param = _parse_base(base, param)
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]...)
   ord = prod(ordering_dp(r) for r in ranks)
   R = PolynomialRing(base, syms, ordering=ord)[1]
@@ -1204,7 +1232,7 @@ function abs_flag(dims::Vector{Int}; base::Ring=Singular.QQ, symbol::String="c")
     set_special(Fl, :weyl_group => WeylGroup("A$(n-1)"))
     set_special(Fl, :roots => -[c[i] - c[i+1] for i in 1:n-1])
   end
-  return Fl
+  return param == [] ? Fl : (Fl, param)
 end
 
 @doc Markdown.doc"""

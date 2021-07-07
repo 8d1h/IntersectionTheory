@@ -22,16 +22,22 @@ space $X$ along $i:I\hookrightarrow X$.
 
 Return the parameter space $H$ and the exceptional divisor $Y$.
 """
-function twisted_cubics(; base::Ring=Singular.QQ) # absolute case: Hilbert scheme of twisted cubics in P³
-  X = matrix_moduli(4, 2, 3, base=base)
-  S, Q = proj(3, base=base).bundles
+function twisted_cubics(; base::Ring=QQ, param::Union{String, Vector{String}}=String[]) # absolute case: Hilbert scheme of twisted cubics in P³
+  ans = matrix_moduli(4, 2, 3, base=base, param=param)
+  if ans isa AbsVariety
+    X, param = ans, []
+  else
+    X, param = ans
+  end
+  S, Q = proj(3, base=base_ring(X)).bundles
   I = proj(dual(Q))
   T, R = I.bundles
   iˣE = T * dual(Q)
   iˣF = T * dual(R) * det(dual(Q))
   image = vcat(chern(iˣE)[1:3], chern(iˣF)[1:2])
   i = hom(I, X, image, :alg)
-  blowup(i)
+  H, Y = blowup(i)
+  return param == [] ? (H, Y) : (H, Y, param)
 end
 
 function twisted_cubics(V::AbsBundle) # relative case
@@ -65,8 +71,9 @@ end
 Construct the moduli space $N(q;m,n)$ of $n\times m$ matrices of linear forms
 on a $q$-dimensional vector space, or relative to a rank-$q$ vector bundle $V$.
 """
-function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=Singular.QQ)
+function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   @assert gcd(m, n) == 1 # otherwise there will be strictly semistable points
+  base, param = _parse_base(base, param)
   Rᵂ, ef = PolynomialRing(base, vcat(_parse_symbol("e", 1:n), _parse_symbol("f", 1:m)))
   e, f = ef[1:n], ef[n+1:end]
   A = ChRing(Rᵂ, vcat(collect(1:n), collect(1:m)))
@@ -98,7 +105,7 @@ function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=Singular.QQ)
   X.bundles = [F, E]
   set_special(X, :alg => true)
   set_special(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on a $(q)-dim vector space")
-  X
+  return param == [] ? X : (X, param)
 end
 
 function matrix_moduli(V::AbsBundle, m::Int, n::Int)

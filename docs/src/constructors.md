@@ -12,6 +12,8 @@ using IntersectionTheory
 The following constructors are available for building generic varieties.
 ```@docs
 variety
+point
+curve
 ```
 ### Examples
 ```@repl repl
@@ -20,6 +22,22 @@ Y, (E,) = variety(2, [3 => "c"])
 chern(E)
 Z = variety(2)
 chern(tangent_bundle(Z))
+point()
+curve(3)
+euler(curve("g"))
+```
+For all the above constructors, one can use the `param` argument to introduce
+parameters. Basically, this will change the coefficient ring of the Chow ring
+to a Singular's `FunctionField`. One can also directly pass the function field
+using the `base` argument.
+```@repl repl
+C, d = curve("g", param="d")
+chi(OO(C, d*C.point))
+S, (E,), d = variety(2, [2 => "c"], param="d")
+chern(d*E)
+F = base_ring(S)
+X = variety(3, base=F)
+d*OO(X)
 ```
 !!! note
     The generic varieties are created without any relations by default. There
@@ -33,7 +51,6 @@ chern(tangent_bundle(Z))
 The following constructors are available.
 
 ```@docs
-point
 proj(n::Int)
 grassmannian(k::Int, n::Int; bott::Bool=false)
 flag(dims::Int...; bott::Bool=false)
@@ -51,13 +68,12 @@ grassmannian(2, 4, bott=true)
 flag(1, 3, 5)
 flag([1, 3, 5])
 ```
-For all the above constructors, the `base` argument can be used to introduce
-parameters using Singular's `FunctionField`.
+Again one can use the `param` and `base` arguments to introduce parameters.
 ```@repl repl
-F, (k,) = FunctionField(Singular.QQ, ["k"]);
-P2 = proj(2, base=F);
-chi(OO(P2, k))
-symmetric_power(k, 2OO(P2))
+P2, d = proj(2, param="d");
+chern(OO(P2, d))
+1 - euler(complete_intersection(P2, d))//2
+symmetric_power(d, 2OO(P2))
 ```
 
 ## Projective bundles, relative flag varieties

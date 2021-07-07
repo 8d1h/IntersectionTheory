@@ -26,6 +26,12 @@ julia> chern(proj(4))
 julia> todd(2)
 1//12*c₁^2 + 1//12*c₂
 
+julia> C, d = curve("g", param="d")
+(AbsVariety of dim 1, d)
+
+julia> chi(OO(C, d*C.point))
+-g + d + 1
+
 julia> B = blowup_points(2, proj(2))
 AbsVariety of dim 2
 

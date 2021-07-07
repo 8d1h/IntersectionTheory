@@ -2,30 +2,19 @@
 #
 # some utility functions
 #
-# polynomial mod, weirdly not found in AbstractAlgebra or Nemo
-# this is taken from Hecke
-function mod(f::AbstractAlgebra.PolyElem{T}, g::AbstractAlgebra.PolyElem{T}) where {T <: RingElem}
-  @assert f.parent == g.parent
-  if length(g) == 0
-    throw(DivideError())
-  end
-  if length(f) >= length(g)
-    f = deepcopy(f)
-    b = leading_coefficient(g)
-    g = inv(b)*g
-    c = Nemo.base_ring(f)()
-    while length(f) >= length(g)
-      l = -leading_coefficient(f)
-      for i = 1:length(g) 
-        c = Nemo.mul!(c, Nemo.coeff(g, i - 1), l)
-        u = Nemo.coeff(f, i + length(f) - length(g) - 1)
-        u = Nemo.addeq!(u, c)
-        f = Nemo.setcoeff!(f, i + length(f) - length(g) - 1, u)
-      end
-      Nemo.set_length!(f, Nemo.normalise(f, length(f) - 1))
-    end
-  end
-  return f
+
+# XXX division for n_unknown{Nemo.FieldElem}
+# remove once this is in Singular.jl
+function div(x::Singular.spoly{T}, y::Singular.spoly{T}) where T <: Singular.n_unknown{S} where S <: Nemo.FieldElem
+   Singular.check_parent(x, y)
+   R = parent(x)
+   GC.@preserve x y R begin
+      px = Singular.libSingular.p_Copy(x.ptr, R.ptr)
+      py = Singular.libSingular.p_Copy(y.ptr, R.ptr)
+      q = R(Singular.libSingular.p_Divide(px, py, R.ptr))
+      Singular.libSingular.check_error()
+      return q
+   end
 end
 
 # partitions of n with at most k numbers each ≤ m
@@ -46,6 +35,22 @@ end
 function combinations(I::UnitRange, k::Int) combinations(collect(I), k) end
 function combinations(l::Vector, k::Int)
   [[l[i] for i in c] for c in combinations(length(l), k)]
+end
+
+# construct appropriate base field
+function _parse_base(base::Ring, param::Union{String, Vector{String}})
+  p = Singular.n_transExt[]
+  if base == QQ || base == Singular.QQ
+    if base == QQ base = Singular.QQ end
+    if param isa String
+      base, (p,) = FunctionField(Singular.QQ, [param])
+    elseif param != []
+      base, p = FunctionField(Singular.QQ, param)
+    end
+  else
+    param == [] || error("incorrect specification for parameters")
+  end
+  return base, p
 end
 
 ###############################################################################
