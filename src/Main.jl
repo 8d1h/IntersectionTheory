@@ -453,29 +453,29 @@ function todd_polynomial(n::Int)
 end
 
 @doc Markdown.doc"""
-    chern_number(X::AbsVariety, λ::Int...)
-    chern_number(X::AbsVariety, λ::Vector{Int})
-    chern_number(X::AbsVariety, λ::Partition)
+    chern_number(X::Variety, λ::Int...)
+    chern_number(X::Variety, λ::Vector{Int})
+    chern_number(X::Variety, λ::Partition)
 Compute the Chern number $c_\lambda (X):=\int_X c_{\lambda_1}(X)\cdots
 c_{\lambda_k}(X)$, where $\lambda:=(\lambda_1,\dots,\lambda_k)$ is a partition
 of the dimension of $X$.
 """
-chern_number(X::AbsVariety, λ::Int...) = chern_number(X, collect(λ))
-chern_number(X::AbsVariety, λ::Partition) = chern_number(X, collect(λ))
+chern_number(X::Variety, λ::Int...) = chern_number(X, collect(λ))
+chern_number(X::Variety, λ::Partition) = chern_number(X, collect(λ))
 function chern_number(X::AbsVariety, λ::Vector{Int})
-  @assert sum(λ) == X.dim
-  c = chern(X)[1:X.dim]
+  @assert sum(λ) == dim(X)
+  c = chern(X)[1:dim(X)]
   integral(prod([c[i] for i in λ]))
 end
 
 @doc Markdown.doc"""
-    chern_numbers(X::AbsVariety)
-Compute all the Chern numbers of $X$ as a list of pairs $\lambda\Rightarrow
+    chern_numbers(X::Variety)
+Compute all the Chern numbers of $X$ as a dictionary of $\lambda\Rightarrow
 c_\lambda(X)$.
 """
 function chern_numbers(X::AbsVariety)
-  c = chern(X)[1:X.dim]
-  [λ => integral(prod([c[i] for i in λ])) for λ in partitions(X.dim)]
+  c = chern(X)[1:dim(X)]
+  Dict([λ => integral(prod([c[i] for i in λ])) for λ in partitions(dim(X))])
 end
 
 for g in [:a_hat_genus, :l_genus]

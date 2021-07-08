@@ -86,6 +86,14 @@ cotangent_bundle(X::TnVariety) = dual(X.T)
 bundles(X::TnVariety) = X.bundles
 OO(X::TnVariety) = TnBundle(X, 1, p -> TnRep([0]))
 
+function *(X::TnVariety, Y::TnVariety)
+  points = [[p[1],q[1]] => p[2]*q[2] for (p, q) in Base.Iterators.product(X.points, Y.points)][:]
+  XY = TnVariety(dim(X) + dim(Y), points)
+  T = TnBundle(XY, dim(XY), p -> TnRep(vcat(X.T.loc(p[1]).w, Y.T.loc(p[2]).w)))
+  XY.T = T
+  return XY
+end
+
 dual(F::TnBundle) = TnBundle(F.parent, F.rank, p -> dual(F.loc(p)))
 +(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank + G.rank, p -> F.loc(p) + G.loc(p))
 *(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank * G.rank, p -> F.loc(p) * G.loc(p))
@@ -160,6 +168,17 @@ function integral(c::TnBundleChern)
   ans
 end
 
+function chern_number(X::TnVariety, λ::Vector{Int})
+  @assert sum(λ) == dim(X)
+  c = [chern(i, X) for i in 1:dim(X)]
+  integral(prod([c[i] for i in λ]))
+end
+
+function chern_numbers(X::TnVariety)
+  c = [chern(i, X) for i in 1:dim(X)]
+  Dict([λ => integral(prod([c[i] for i in λ])) for λ in partitions(dim(X))])
+end
+
 ###############################################################################
 #
 # Grassmannians and flag varieties
@@ -219,4 +238,93 @@ function linear_subspaces_on_hypersurface(k::Int, d::Int; bott::Bool=true)
   G = grassmannian(k+1, n+1, bott=bott)
   S, Q = G.bundles
   integral(ctop(symmetric_power(d, dual(S))))
+end
+
+# Ellingsrud-Strømme
+# On the homology of the Hilbert scheme of points in the plane
+@doc Markdown.doc"""
+    hilb_P2(n::Int)
+Construct the Hilbert scheme of $n$ points on $\mathbf P^2$ as a `TnVariety`.
+"""
+function hilb_P2(n::Int; weights=[0,1,2+n])
+  parts = [[a-1, b-a-1, n+2-b] for (a,b) in combinations(n+2, 2)]
+  points = [p=>1 for p in vcat([collect(Base.Iterators.product(partitions.(pp)...))[:] for pp in parts]...)]
+  H = TnVariety(2n, points)
+  w = _parse_weight(3, weights)
+  loc(p) = begin
+    ws = typeof(w[1])[]
+    for (i1,i2,i3) in [[1,2,3],[2,3,1],[3,1,2]]
+      λ, μ = w[i2]-w[i1], w[i3]-w[i1]
+      if length(p[i1]) > 0
+	b = conj(p[i1])
+	for (s,j) in enumerate(p[i1])
+	  for i in 1:j
+	    push!(ws, λ*(i-j-1) + μ*(b[i]-s))
+	    push!(ws, λ*(j-i)   + μ*(s-b[i]-1))
+	  end
+	end
+      end
+    end
+    TnRep(ws)
+  end
+  T = TnBundle(H, 2n, loc)
+  H.T = T
+  return H
+end
+
+@doc Markdown.doc"""
+    hilb_P1xP1(n::Int)
+Construct the Hilbert scheme of $n$ points on $\mathbf P^1\times\mathbf P^1$ as
+a `TnVariety`.
+"""
+function hilb_P1xP1(n::Int; weights=[0,1,2,3+n])
+  parts = [[a-1, b-a-1, c-b-1, n+3-c] for (a,b,c) in combinations(n+3, 3)]
+  points = [p=>1 for p in vcat([collect(Base.Iterators.product(partitions.(pp)...))[:] for pp in parts]...)]
+  H = TnVariety(2n, points)
+  w = _parse_weight(4, weights)
+  loc(p) = begin
+    ws = typeof(w[1])[]
+    for (i1,i2,i3) in [[1,1,2],[2,4,2],[3,1,3],[4,4,3]]
+      λ, μ = w[i2]-w[5-i2], w[i3]-w[5-i3]
+      if length(p[i1]) > 0
+	b = conj(p[i1])
+	for (s,j) in enumerate(p[i1])
+	  for i in 1:j
+	    push!(ws, λ*(i-j-1) + μ*(b[i]-s))
+	    push!(ws, λ*(j-i)   + μ*(s-b[i]-1))
+	  end
+	end
+      end
+    end
+    TnRep(ws)
+  end
+  T = TnBundle(H, 2n, loc)
+  H.T = T
+  return H
+end
+
+@doc Markdown.doc"""
+    hilb_K3(n::Int)
+Compute the Chern numbers of a hyperkähler variety of $\mathrm{K3}^{[n]}$-type.
+"""
+function hilb_K3(n)
+  R, AB = Nemo.PolynomialRing(QQ, vcat(["A$i" for i in 1:n], ["B$i" for i in 1:n]))
+  A, B = AB[1:n], AB[n+1:2n]
+  S = Nemo.AbsSeriesRing(R, n+1)
+  x = Nemo.gen(S)
+  HA = 1 + sum(A[i]*x^i for i in 1:n)
+  HB = 1 + sum(B[i]*x^i for i in 1:n)
+  Sn = Nemo.coeff(inv(HA)^16 * HB^18, n)
+  P = filter(λ -> all(iseven, λ), partitions(2n))
+  ans = Dict([λ => QQ() for λ in P])
+  for t in Nemo.exponent_vectors(Sn)
+    P2 = [prod(repeat([hilb_P2(n)], m)) for (n,m) in enumerate(t[1:n]) if !iszero(m)]
+    P1xP1 = [prod(repeat([hilb_P1xP1(n)], m)) for (n,m) in enumerate(t[n+1:2n]) if !iszero(m)]
+    X = prod(vcat(P2, P1xP1))
+    c = chern_numbers(X)
+    for λ in P
+      ans[λ] += Nemo.coeff(Sn, t) * c[λ]
+    end
+  end
+  ans
 end

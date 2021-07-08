@@ -40,6 +40,7 @@ export →
 export blowup, blowup_points, graph
 export trim!
 export twisted_cubics, matrix_moduli
+export hilb_P2, hilb_P1xP1, hilb_K3
 export weyl_group, longest_element, perm
 export chow_ring, homogeneous_variety
 

@@ -178,7 +178,7 @@ end
   @test a_hat_genus(P2) == -1//8
   @test signature(P2) == 1
   @test chern_number(P2, 2) == 3
-  @test chern_numbers(P2) == [Nemo.Partition([2]) => 3, Nemo.Partition([1,1]) => 9]
+  @test chern_numbers(P2) == Dict([Nemo.Partition([2]) => 3, Nemo.Partition([1,1]) => 9])
   @test chi(OO(P2)) == 1
   @test chi(cotangent_bundle(P2)) == -1
   hilb = hilbert_polynomial(P2)
