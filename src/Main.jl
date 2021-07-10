@@ -246,7 +246,7 @@ mutable struct AbsVariety <: AbsVarietyT
   struct_map::AbsVarietyHom
   @declare_other
   function AbsVariety(n::Int, R::ChRing)
-    base = base_ring(R.R)
+    base = base_ring(R)
     X = new(n, R, base)
     set_special(R, :variety => X)
     set_special(R, :variety_dim => n)
@@ -446,11 +446,17 @@ chi(p::Int, X::AbsVariety) = chi(exterior_power(p, dual(X.T))) # generalized Tod
 
 # introduced by Libgober-Wood
 # see https://arxiv.org/abs/1512.04321
-function todd_polynomial(n::Int)
-  X = variety(n)
-  R, z = Nemo.PolynomialRing(X.ring.R, "z")
-  sum(chi(p, X).f * (z-1)^p for p in 0:n)
+@doc Markdown.doc"""
+    libgober_wood_polynomial(n::Int)
+    libgober_wood_polynomial(X::AbsVariety)
+Compute the polynomial defined by Libgober--Wood in dimension $n$.
+"""
+function libgober_wood_polynomial(X::AbsVariety)
+  F = parent(integral(X(0)))
+  R, z = Nemo.PolynomialRing(F, "z")
+  sum([chi(p, X) * (z-1)^p for p in 0:dim(X)])
 end
+libgober_wood_polynomial(n::Int) = libgober_wood_polynomial(variety(n))
 
 @doc Markdown.doc"""
     chern_number(X::Variety, λ::Int...)
@@ -463,19 +469,21 @@ of the dimension of $X$.
 chern_number(X::Variety, λ::Int...) = chern_number(X, collect(λ))
 chern_number(X::Variety, λ::Partition) = chern_number(X, collect(λ))
 function chern_number(X::AbsVariety, λ::Vector{Int})
-  @assert sum(λ) == dim(X)
+  sum(λ) == dim(X) || error("not a partition of the dimension")
   c = chern(X)[1:dim(X)]
   integral(prod([c[i] for i in λ]))
 end
 
 @doc Markdown.doc"""
     chern_numbers(X::Variety)
+    chern_numbers(X::Variety, P::Vector{Partition})
 Compute all the Chern numbers of $X$ as a dictionary of $\lambda\Rightarrow
-c_\lambda(X)$.
+c_\lambda(X)$, or only those corresponding to partitions in a given vector.
 """
-function chern_numbers(X::AbsVariety)
+function chern_numbers(X::AbsVariety, P::Vector{T}=partitions(dim(X))) where T <: Partition
+  all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
   c = chern(X)[1:dim(X)]
-  Dict([λ => integral(prod([c[i] for i in λ])) for λ in partitions(dim(X))])
+  Dict([λ => integral(prod([c[i] for i in λ])) for λ in P])
 end
 
 for g in [:a_hat_genus, :l_genus]

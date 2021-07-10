@@ -6,14 +6,14 @@ import Singular
 import GAP
 import Markdown
 
-import Base: +, -, *, ^, ==, div, zero, one, parent, mod
+import Base: +, -, *, ^, ==, div, zero, one, parent, mod, deepcopy
 import Nemo: fmpz, fmpq, ZZ, QQ
 import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli
-import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!
+import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!, MPolyElem
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
 import AbstractAlgebra.Generic: Partition, subscriptify, integral, partitions, FunctionalMap
-import AbstractAlgebra: @declare_other, set_special, get_special, combinations
+import AbstractAlgebra: @declare_other, set_special, get_special, combinations, expressify
 import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
 import Singular: ordering_dp, ordering_wp
@@ -33,14 +33,14 @@ export dim, degree, rank, basis, intersection_matrix, dual_basis
 export simplify, simplify!, inv, base_ring, gens, domain, codomain, betti
 export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop, pontryagin
 export chern_number, chern_numbers, l_genus, a_hat_genus, signature
-export hilbert_polynomial #, todd_polynomial
+export hilbert_polynomial, libgober_wood_polynomial
 export section_zero_locus, complete_intersection, degeneracy_locus
 export schubert_class, schubert_classes
 export →
 export blowup, blowup_points, graph
 export trim!
 export twisted_cubics, matrix_moduli
-export hilb_P2, hilb_P1xP1, hilb_K3
+export hilb_P2, hilb_P1xP1, hilb_surface, hilb_K3
 export weyl_group, longest_element, perm
 export chow_ring, homogeneous_variety
 

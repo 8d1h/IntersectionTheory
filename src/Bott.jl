@@ -151,32 +151,43 @@ chern(F::TnBundle, x::RingElem) = begin
   TnBundleChern(F, R.(Nemo.evaluate(x, [c.f for c in gens(R)])))
 end
 
-function integral(c::TnBundleChern)
-  F, R = c.F, parent(c.c)
+# compute multiple integrals simultaneously to avoid redundant computations
+# used in `chern_numbers` for example
+function _integral(cc::Vector{TnBundleChern})
+  F, R = cc[1].F, parent(cc[1].c)
+  @assert all(c -> c.F == F, cc)
   X = F.parent
   n, r = X.dim, length(gens(R))
-  top = c.c[n].f
-  top == 0 && return QQ()
-  exp_vec = sum(Singular.exponent_vectors(top))
+  top = [c.c[n].f for c in cc]
+  exp_vec = sum(vcat(sum.(Singular.exponent_vectors.(top))))
   idx = filter(i -> exp_vec[i] > 0, 1:r)
-  ans = 0
+  ans = repeat([QQ()], length(cc))
   for (p,e) in X.points # Bott's formula
     Fp = F.loc(p)
     cherns = [i in idx ? chern(i, Fp) : QQ() for i in 1:r]
-    ans += top(cherns...) * (1 // (e * ctop(X.T.loc(p))))
+    cT = ctop(X.T.loc(p))
+    for i in 1:length(cc)
+      ans[i] += top[i](cherns...) * (1 // (e * cT))
+    end
   end
   ans
 end
 
+function integral(c::TnBundleChern)
+  _integral([c])[1]
+end
+
 function chern_number(X::TnVariety, λ::Vector{Int})
-  @assert sum(λ) == dim(X)
+  sum(λ) == dim(X) || error("not a partition of the dimension")
   c = [chern(i, X) for i in 1:dim(X)]
   integral(prod([c[i] for i in λ]))
 end
 
-function chern_numbers(X::TnVariety)
+function chern_numbers(X::TnVariety, P::Vector{T}=partitions(dim(X))) where T <: Partition
+  all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
   c = [chern(i, X) for i in 1:dim(X)]
-  Dict([λ => integral(prod([c[i] for i in λ])) for λ in partitions(dim(X))])
+  ans = _integral([prod([c[i] for i in λ]) for λ in P])
+  Dict([λ => i for (λ, i) in zip(P, ans)])
 end
 
 ###############################################################################
@@ -305,25 +316,43 @@ end
 
 @doc Markdown.doc"""
     hilb_K3(n::Int)
-Compute the Chern numbers of a hyperkähler variety of $\mathrm{K3}^{[n]}$-type.
+Compute the (non-trivial) Chern numbers of a hyperkähler variety of
+$\mathrm{K3}^{[n]}$-type.
 """
 function hilb_K3(n)
-  R, AB = Nemo.PolynomialRing(QQ, vcat(["A$i" for i in 1:n], ["B$i" for i in 1:n]))
+  # compute with only the even Chern classes
+  P = [Partition(2 .* λ) for λ in partitions(n)]
+  hilb_surface(n, 0, 24, P)
+end
+
+# Ellingsrud-Göttsche-Lehn
+# On the cobordism class of the Hilbert scheme of a surface
+@doc Markdown.doc"""
+    hilb_surface(n::Int, c1_2::Int, c2::Int)
+    hilb_surface(n::Int, c1_2::Int, c2::Int, P::Vector{Partition})
+Compute the Chern numbers of the Hilbert scheme of $n$ points on a surface with
+given Chern numbers $c_1^2$ and $c_2$.
+"""
+function hilb_surface(n::Int, c1_2::Int, c2::Int, P::Vector{T}=partitions(2n)) where T <: Partition
+  # S is cobordant to a1*P2 + a2*P1xP1
+  a1, a2 = Nemo.solve(Nemo.matrix(QQ, [9 3; 8 4]'), Nemo.matrix(QQ, [c1_2 c2]'))
+  F, AB = FunctionField(Singular.QQ, vcat(["A$i" for i in 1:n], ["B$i" for i in 1:n]))
   A, B = AB[1:n], AB[n+1:2n]
-  S = Nemo.AbsSeriesRing(R, n+1)
-  x = Nemo.gen(S)
-  HA = 1 + sum(A[i]*x^i for i in 1:n)
-  HB = 1 + sum(B[i]*x^i for i in 1:n)
-  Sn = Nemo.coeff(inv(HA)^16 * HB^18, n)
-  P = filter(λ -> all(iseven, λ), partitions(2n))
+  S, (z,) = PolynomialRing(F, ["z"])
+  R = ChRing(S, [1], Ideal(S, [z^(n+1)]), :variety_dim => n)
+  HA = 1 + R(sum(A[i]*z^i for i in 1:n))
+  HB = 1 + R(sum(B[i]*z^i for i in 1:n))
+  # Theorem 0.1: H(S) = H(P2)^a1 * H(P1xP1)^a2
+  Sn = Nemo.coeffs(_expp(a1*_logg(HA) + a2*_logg(HB))[n].f)
+  Sn = Singular.n_transExt_to_spoly(collect(Sn)[1]) # convert to an spoly
   ans = Dict([λ => QQ() for λ in P])
-  for t in Nemo.exponent_vectors(Sn)
+  for (a, t) in zip(Nemo.coeffs(Sn), Nemo.exponent_vectors(Sn))
     P2 = [prod(repeat([hilb_P2(n)], m)) for (n,m) in enumerate(t[1:n]) if !iszero(m)]
     P1xP1 = [prod(repeat([hilb_P1xP1(n)], m)) for (n,m) in enumerate(t[n+1:2n]) if !iszero(m)]
     X = prod(vcat(P2, P1xP1))
-    c = chern_numbers(X)
+    c = chern_numbers(X, P)
     for λ in P
-      ans[λ] += Nemo.coeff(Sn, t) * c[λ]
+      ans[λ] += a * c[λ]
     end
   end
   ans
