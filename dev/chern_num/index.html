@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Chern number computations · IntersectionTheory.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">IntersectionTheory.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">About</a></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../intro/">Introduction</a></li><li><a class="tocitem" href="../constructors/">Constructors</a></li><li><a class="tocitem" href="../varieties/">Varieties</a></li><li><a class="tocitem" href="../homog_varieties/">Homogeneous varieties</a></li><li><a class="tocitem" href="../bundles/">Bundles</a></li><li><a class="tocitem" href="../morphisms/">Morphisms</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Chern number computations</a><ul class="internal"><li><a class="tocitem" href="#Chern-numbers-of-the-Hilbert-scheme-of-a-surface"><span>Chern numbers of the Hilbert scheme of a surface</span></a></li><li><a class="tocitem" href="#A-polynomial-defined-by-Libgober–Wood"><span>A polynomial defined by Libgober–Wood</span></a></li></ul></li><li><a class="tocitem" href="../cubic_fourfold/">Special cubic fourfolds</a></li><li><a class="tocitem" href="../curves_on_quintic/">Rational curves on a quintic threefold</a></li></ul></li><li><a class="tocitem" href="../dev/">Development notes</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Chern number computations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Chern number computations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/8d1h/IntersectionTheory/blob/master/docs/src/chern_num.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Chern-number-computations"><a class="docs-heading-anchor" href="#Chern-number-computations">Chern number computations</a><a id="Chern-number-computations-1"></a><a class="docs-heading-anchor-permalink" href="#Chern-number-computations" title="Permalink"></a></h1><p>We gather some Chern numbers related computations here.</p><h2 id="Chern-numbers-of-the-Hilbert-scheme-of-a-surface"><a class="docs-heading-anchor" href="#Chern-numbers-of-the-Hilbert-scheme-of-a-surface">Chern numbers of the Hilbert scheme of a surface</a><a id="Chern-numbers-of-the-Hilbert-scheme-of-a-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Chern-numbers-of-the-Hilbert-scheme-of-a-surface" title="Permalink"></a></h2><p>Let <span>$S$</span> be a smooth projective surface. <a href="https://arxiv.org/abs/math/9904095">Ellingsrud–Göttsche–Lehn</a> showed that the cobordism class of the Hilbert scheme <span>$S^{[n]}$</span> of <span>$n$</span> points on <span>$S$</span> depends only on the cobordism class of <span>$S$</span>. In other words, the Chern numbers of <span>$S^{[n]}$</span> only depends on the Chern numbers of <span>$S$</span>, <span>$c_1(S)^2$</span> and <span>$c_2(S)$</span>.</p><p>On the other hand, the cobordism classes of surfaces are linearly generated by <span>$[\mathbf P^2]$</span> and <span>$[\mathbf P^1\times \mathbf P^1]$</span>. For these two surfaces, their Hilbert schemes admit natural torus actions, so their Chern numbers can be readily computed using Bott&#39;s formula.</p><p>We provide the constructors for <span>$(\mathbf P^2)^{[n]}$</span> and <span>$(\mathbf P^1\times \mathbf P^1)^{[n]}$</span> as <code>TnVariety</code>, which will allow the computation of their Chern numbers using Bott&#39;s formula. Then we implement a function that computes the Chern numbers of <span>$S^{[n]}$</span> for an arbitrary cobordism class <span>$[S]$</span> specified by its two Chern numbers <span>$c_1^2$</span> and <span>$c_2$</span>, using the strategy given in <em>loc. cit.</em></p><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.hilb_P2" href="#IntersectionTheory.hilb_P2"><code>IntersectionTheory.hilb_P2</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">hilb_P2(n::Int)</code></pre><p>Construct the Hilbert scheme of <span>$n$</span> points on <span>$\mathbf P^2$</span> as a <code>TnVariety</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/051d381fe3ed94cf3de6b4dc3a0a0fba2b1a8398/src/Bott.jl#L256">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.hilb_P1xP1" href="#IntersectionTheory.hilb_P1xP1"><code>IntersectionTheory.hilb_P1xP1</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">hilb_P1xP1(n::Int)</code></pre><p>Construct the Hilbert scheme of <span>$n$</span> points on <span>$\mathbf P^1\times\mathbf P^1$</span> as a <code>TnVariety</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/051d381fe3ed94cf3de6b4dc3a0a0fba2b1a8398/src/Bott.jl#L286">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.hilb_surface" href="#IntersectionTheory.hilb_surface"><code>IntersectionTheory.hilb_surface</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">hilb_surface(n::Int, c1_2::Int, c2::Int)
+hilb_surface(n::Int, c1_2::Int, c2::Int, P::Vector{Partition})</code></pre><p>Compute the Chern numbers of the Hilbert scheme of <span>$n$</span> points on a surface with given Chern numbers <span>$c_1^2$</span> and <span>$c_2$</span>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/051d381fe3ed94cf3de6b4dc3a0a0fba2b1a8398/src/Bott.jl#L330">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.hilb_K3" href="#IntersectionTheory.hilb_K3"><code>IntersectionTheory.hilb_K3</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">hilb_K3(n::Int)</code></pre><p>Compute the (non-trivial) Chern numbers of a hyperkähler variety of <span>$\mathrm{K3}^{[n]}$</span>-type.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/051d381fe3ed94cf3de6b4dc3a0a0fba2b1a8398/src/Bott.jl#L317">source</a></section></article><h3 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; X = hilb_P2(2)
+TnVariety of dim 4
+
+julia&gt; chern_numbers(X)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 5 entries:
+  2₂   =&gt; 90
+  2₁1₂ =&gt; 162
+  3₁1₁ =&gt; 54
+  1₄   =&gt; 243
+  4₁   =&gt; 9
+
+julia&gt; hilb_surface(2, 0, 24)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 5 entries:
+  2₂   =&gt; 828
+  2₁1₂ =&gt; 0
+  3₁1₁ =&gt; 0
+  1₄   =&gt; 0
+  4₁   =&gt; 324
+
+julia&gt; hilb_K3(2)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 2 entries:
+  2₂ =&gt; 828
+  4₁ =&gt; 324</code></pre><p>We record the Chern numbers of <span>$\mathrm{K3}^{[n]}$</span> with <span>$n\in\{5,6,7\}$</span>, since these are not found in the literature.</p><pre><code class="language-julia-repl">julia&gt; hilb_K3(5)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 7 entries:
+  10₁  =&gt; 176256
+  4₁2₃ =&gt; 52697088
+  4₂2₁ =&gt; 21921408
+  6₁4₁ =&gt; 5075424
+  6₁2₂ =&gt; 12168576
+  2₅   =&gt; 126867456
+  8₁2₁ =&gt; 1774080
+
+julia&gt; hilb_K3(6)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 11 entries:
+  6₁4₁2₁ =&gt; 392090040
+  8₁4₁   =&gt; 59314272
+  8₁2₂   =&gt; 139942280
+  12₁    =&gt; 1073720
+  6₁2₃   =&gt; 927397840
+  10₁2₁  =&gt; 14450680
+  4₃     =&gt; 697106648
+  2₆     =&gt; 9277276480
+  4₁2₄   =&gt; 3910848640
+  4₂2₂   =&gt; 1650311720
+  6₂     =&gt; 93495320
+
+julia&gt; hilb_K3(7)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 15 entries:
+  8₁6₁   =&gt; 1296158976
+  10₁4₁  =&gt; 569044224
+  10₁2₂  =&gt; 1324608768
+  6₁2₄   =&gt; 79324710912
+  6₁4₂   =&gt; 14528215296
+  2₇     =&gt; 765374164992
+  4₃2₁   =&gt; 59674012416
+  14₁    =&gt; 5930496
+  8₁4₁2₁ =&gt; 5296568832
+  6₂2₁   =&gt; 8273055744
+  12₁2₁  =&gt; 102477312
+  8₁2₃   =&gt; 12357114624
+  6₁4₁2₂ =&gt; 33935583744
+  4₂2₃   =&gt; 139582386432
+  4₁2₅   =&gt; 326732507136</code></pre><h2 id="A-polynomial-defined-by-Libgober–Wood"><a class="docs-heading-anchor" href="#A-polynomial-defined-by-Libgober–Wood">A polynomial defined by Libgober–Wood</a><a id="A-polynomial-defined-by-Libgober–Wood-1"></a><a class="docs-heading-anchor-permalink" href="#A-polynomial-defined-by-Libgober–Wood" title="Permalink"></a></h2><p><a href="https://projecteuclid.org/journals/journal-of-differential-geometry/volume-32/issue-1/Uniqueness-of-the-complex-structure-on-K%C3%A4hler-manifolds-of-certain/10.4310/jdg/1214445041.full">Libgober–Wood</a> defined a universal polynomial with coefficients in Chern numbers of an <span>$n$</span>-dimensional compact Kähler manifold, which can be used to obtain restrictions on certain topological invariants. They are computed up to dimension 9 in this <a href="https://arxiv.org/abs/1512.04321">survey</a>.</p><p>We have a function to compute this polynomial. The dimension-10 one can be computed in less than 1 second, and the dimension-16 one in about 1 minute.</p><p>Of course one can also compute the value of this polynomial for a specific variety.</p><article class="docstring"><header><a class="docstring-binding" id="IntersectionTheory.libgober_wood_polynomial" href="#IntersectionTheory.libgober_wood_polynomial"><code>IntersectionTheory.libgober_wood_polynomial</code></a> — <span class="docstring-category">Function</span></header><section><div><pre><code class="language-julia">libgober_wood_polynomial(n::Int)
+libgober_wood_polynomial(X::AbsVariety)</code></pre><p>Compute the polynomial defined by Libgober–Wood in dimension <span>$n$</span>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/8d1h/IntersectionTheory/blob/051d381fe3ed94cf3de6b4dc3a0a0fba2b1a8398/src/Main.jl#L449">source</a></section></article><h3 id="Examples-2"><a class="docs-heading-anchor" href="#Examples-2">Examples</a><a class="docs-heading-anchor-permalink" href="#Examples-2" title="Permalink"></a></h3><pre><code class="language-julia-repl">julia&gt; libgober_wood_polynomial(3)
+-1//24*c₁*c₂*z^3 + (1//12*c₁*c₂ + 1//2*c₃)*z^2 - 3//2*c₃*z + c₃
+
+julia&gt; libgober_wood_polynomial(proj(6))
+z^6 - 7*z^5 + 21*z^4 - 35*z^3 + 35*z^2 - 21*z + 7</code></pre><p>The degree-2 term is shown to depend on only two Chern numbers.</p><pre><code class="language-julia-repl">julia&gt; [Nemo.coeff(libgober_wood_polynomial(n), 2) for n in 1:10]
+10-element Vector{IntersectionTheory.ChRingElem}:
+ 0
+ 1//12*c₁^2 + 1//12*c₂
+ 1//12*c₁*c₂ + 1//2*c₃
+ 1//12*c₁*c₃ + 7//6*c₄
+ 1//12*c₁*c₄ + 25//12*c₅
+ 1//12*c₁*c₅ + 13//4*c₆
+ 1//12*c₁*c₆ + 14//3*c₇
+ 1//12*c₁*c₇ + 19//3*c₈
+ 1//12*c₁*c₈ + 33//4*c₉
+ 1//12*c₁*c₉ + 125//12*c₁₀</code></pre><p>We observe that there should be similar results for the degree-4 term.</p><pre><code class="language-julia-repl">julia&gt; [Nemo.coeff(libgober_wood_polynomial(n), 4) for n in 1:10]
+10-element Vector{IntersectionTheory.ChRingElem}:
+ 0
+ 0
+ 0
+ -1//720*c₁^4 + 1//180*c₁^2*c₂ + 1//240*c₂^2 + 1//720*c₁*c₃ - 1//720*c₄
+ -1//720*c₁^3*c₂ + 1//240*c₁*c₂^2 + 1//720*c₁^2*c₃ + 29//720*c₁*c₄ + 1//24*c₅
+ -1//720*c₁^3*c₃ + 1//240*c₁*c₂*c₃ + 1//720*c₁^2*c₄ - 1//240*c₃^2 + 1//240*c₂*c₄ + 23//240*c₁*c₅ + 31//120*c₆
+ -1//720*c₁^3*c₄ + 1//240*c₁*c₂*c₄ + 1//720*c₁^2*c₅ - 1//240*c₃*c₄ + 1//240*c₂*c₅ + 31//180*c₁*c₆ + 301//360*c₇
+ -1//720*c₁^3*c₅ + 1//240*c₁*c₂*c₅ + 1//720*c₁^2*c₆ - 1//240*c₃*c₅ + 1//240*c₂*c₆ + 97//360*c₁*c₇ + 81//40*c₈
+ -1//720*c₁^3*c₆ + 1//240*c₁*c₂*c₆ + 1//720*c₁^2*c₇ - 1//240*c₃*c₆ + 1//240*c₂*c₇ + 31//80*c₁*c₈ + 331//80*c₉
+ -1//720*c₁^3*c₇ + 1//240*c₁*c₂*c₇ + 1//720*c₁^2*c₈ - 1//240*c₃*c₇ + 1//240*c₂*c₈ + 379//720*c₁*c₉ + 1087//144*c₁₀</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../morphisms/">« Morphisms</a><a class="docs-footer-nextpage" href="../cubic_fourfold/">Special cubic fourfolds »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 10 July 2021 10:07">Saturday 10 July 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
