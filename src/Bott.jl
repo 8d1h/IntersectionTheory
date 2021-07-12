@@ -145,11 +145,12 @@ chern(X::TnVariety) = chern(X.T)
 chern(k::Int, F::TnBundle) = TnBundleChern(F, chern(F).c[k])
 chern(k::Int, X::TnVariety) = chern(k, X.T)
 ctop(F::TnBundle) = chern(F.rank, F)
-chern(F::TnBundle, x::RingElem) = begin
+chern(F::TnBundle, x::MPolyElem) = begin
   R = _get_ring(F)
   @assert length(gens(R)) == length(gens(parent(x)))
-  TnBundleChern(F, R.(Nemo.evaluate(x, [c.f for c in gens(R)])))
+  TnBundleChern(F, Nemo.evaluate(x, gens(R)))
 end
+todd(X::TnVariety) = chern(X.T, todd(dim(X))[dim(X)].f)
 
 # compute multiple integrals simultaneously to avoid redundant computations
 # used in `chern_numbers` for example
@@ -312,48 +313,4 @@ function hilb_P1xP1(n::Int; weights=[0,1,2,3+n])
   T = TnBundle(H, 2n, loc)
   H.T = T
   return H
-end
-
-@doc Markdown.doc"""
-    hilb_K3(n::Int)
-Compute the (non-trivial) Chern numbers of a hyperkähler variety of
-$\mathrm{K3}^{[n]}$-type.
-"""
-function hilb_K3(n)
-  # compute with only the even Chern classes
-  P = [Partition(2 .* λ) for λ in partitions(n)]
-  hilb_surface(n, 0, 24, P)
-end
-
-# Ellingsrud-Göttsche-Lehn
-# On the cobordism class of the Hilbert scheme of a surface
-@doc Markdown.doc"""
-    hilb_surface(n::Int, c1_2::Int, c2::Int)
-    hilb_surface(n::Int, c1_2::Int, c2::Int, P::Vector{Partition})
-Compute the Chern numbers of the Hilbert scheme of $n$ points on a surface with
-given Chern numbers $c_1^2$ and $c_2$.
-"""
-function hilb_surface(n::Int, c1_2::Int, c2::Int, P::Vector{T}=partitions(2n)) where T <: Partition
-  # S is cobordant to a1*P2 + a2*P1xP1
-  a1, a2 = Nemo.solve(Nemo.matrix(QQ, [9 3; 8 4]'), Nemo.matrix(QQ, [c1_2 c2]'))
-  F, AB = FunctionField(Singular.QQ, vcat(["A$i" for i in 1:n], ["B$i" for i in 1:n]))
-  A, B = AB[1:n], AB[n+1:2n]
-  S, (z,) = PolynomialRing(F, ["z"])
-  R = ChRing(S, [1], Ideal(S, [z^(n+1)]), :variety_dim => n)
-  HA = 1 + R(sum(A[i]*z^i for i in 1:n))
-  HB = 1 + R(sum(B[i]*z^i for i in 1:n))
-  # Theorem 0.1: H(S) = H(P2)^a1 * H(P1xP1)^a2
-  Sn = Nemo.coeffs(_expp(a1*_logg(HA) + a2*_logg(HB))[n].f)
-  Sn = Singular.n_transExt_to_spoly(collect(Sn)[1]) # convert to an spoly
-  ans = Dict([λ => QQ() for λ in P])
-  for (a, t) in zip(Nemo.coeffs(Sn), Nemo.exponent_vectors(Sn))
-    P2 = [prod(repeat([hilb_P2(n)], m)) for (n,m) in enumerate(t[1:n]) if !iszero(m)]
-    P1xP1 = [prod(repeat([hilb_P1xP1(n)], m)) for (n,m) in enumerate(t[n+1:2n]) if !iszero(m)]
-    X = prod(vcat(P2, P1xP1))
-    c = chern_numbers(X, P)
-    for λ in P
-      ans[λ] += a * c[λ]
-    end
-  end
-  ans
 end

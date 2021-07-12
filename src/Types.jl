@@ -277,6 +277,17 @@ function chow_ring(R::MPolyRing, w::Vector{Int}, rels::Vector{Singular.spoly{T}}
   ChRing(R, w, Ideal(R, rels))
 end
 
+###
+mutable struct CobordRing <: Ring
+  @declare_other
+end
+
+mutable struct CobordRingElem <: RingElem
+  parent::CobordRing
+  f::Dict{Int, Vector{fmpq}}
+end
+###
+
 # copied from Oscar. I should really start migrating to Oscar...
 abstract type GAPGroup <: AbstractAlgebra.Group end
 abstract type GAPGroupElem{T<:GAPGroup} <: AbstractAlgebra.GroupElem end

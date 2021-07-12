@@ -40,7 +40,8 @@ export →
 export blowup, blowup_points, graph
 export trim!
 export twisted_cubics, matrix_moduli
-export hilb_P2, hilb_P1xP1, hilb_surface, hilb_K3
+export hilb_P2, hilb_P1xP1, hilb_surface, hilb_K3, generalized_kummer
+export universal_genus, cobordism_class
 export weyl_group, longest_element, perm
 export chow_ring, homogeneous_variety
 
@@ -52,5 +53,6 @@ include("Main.jl")   # basic constructions for Schubert calculus
 include("Blowup.jl") # blowup
 include("Moduli.jl") # moduli of matrices, twisted cubics
 include("Weyl.jl")   # weyl groups
+include("Cobord.jl")
 
 end

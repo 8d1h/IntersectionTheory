@@ -24,7 +24,7 @@ julia> chern(proj(4))
 1 + 5*h + 10*h^2 + 10*h^3 + 5*h^4
 
 julia> todd(2)
-1//12*c₁^2 + 1//12*c₂
+1 + 1//2*c₁ + 1//12*c₁^2 + 1//12*c₂
 
 julia> C, d = curve("g", param="d")
 (AbsVariety of dim 1, d)

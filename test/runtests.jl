@@ -70,13 +70,13 @@ end
   @test pushforward(D → X, D(1)) == degeneracy_locus(2, A, B, class=true)
 
   # characteristic classes
-  t = todd(2)
+  t = todd(2)[2]
   c = gens(parent(t))
   @test t == 1//12 * c[1]^2 + 1//12 * c[2]
-  l = l_genus(2)
+  l = l_genus(2)[2]
   p = gens(parent(l))
   @test l == -1//45 * p[1]^2 + 7//45 * p[2]
-  a = a_hat_genus(2)
+  a = a_hat_genus(2)[2]
   p = gens(parent(a))
   @test a == 7//5760 * p[1]^2 - 1//1440 * p[2]
   

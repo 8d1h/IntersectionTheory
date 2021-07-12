@@ -491,7 +491,7 @@ for g in [:a_hat_genus, :l_genus]
     R = X.ring
     k == 0 && return R(1)
     p = pontryagin(X.T)[1:2k]
-    R($g(k).f([p[2i].f for i in 1:k]...))
+    R($g(k)[k].f([p[2i].f for i in 1:k]...))
   end
   @eval function $g(X::AbsVariety)
     !iseven(X.dim) && error("the variety is not of even dimension")
@@ -923,17 +923,17 @@ function _sym(k::Int, x::ChRingElem)
   sym
 end
 
-function _genus(x::ChRingElem, taylor::Vector{})
+function _genus(x::ChRingElem, taylor::Vector{T}; twist::U=0) where {T <: RingElement, U <: RingElement}
   R = x.parent
   x == 0 && return R(1)
   n = get_special(R, :variety_dim)
-  R, (t,) = Nemo.PolynomialRing(QQ, ["t"])
-  R_ = ChRing(R, [1], :variety_dim => n)
-  lg = _logg(R_(sum(taylor[i+1] * t^i for i in 0:n)))
+  S, (t,) = Nemo.PolynomialRing(parent(taylor[1]), ["t"])
+  S = ChRing(S, [1], :variety_dim => n)
+  lg = _logg(S(sum(taylor[i+1] * t^i for i in 0:n)))
   comps = lg[1:n]
   lg = [leading_coefficient(comps[i].f) for i in 1:n]
   comps = x[1:n]
-  _expp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n))
+  _expp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n) + twist * gens(R)[1])
 end
 
 function _todd(x::ChRingElem)
@@ -965,23 +965,26 @@ for (g,s) in [:a_hat_genus=>"p", :l_genus=>"p", :todd=>"c"]
     n == 0 && return QQ(1)
     R, p = Nemo.PolynomialRing(QQ, _parse_symbol($s, 1:n))
     R_ = ChRing(R, collect(1:n), :variety_dim => n)
-    $_g(_logg(R_(1+sum(p))))[n]
+    $_g(_logg(R_(1+sum(p))))
   end
 end
 
 @doc Markdown.doc"""
     todd(n::Int)
-Compute the (generic) $n$-th Todd genus."""
+Compute the total class of the Todd genus up to degree $n$, in terms of the
+Chern classes."""
 todd(n::Int)
 
 @doc Markdown.doc"""
     l_genus(n::Int)
-Compute the (generic) $n$-th L genus."""
+Compute the total class of the L genus up to degree $n$, in terms of the
+Pontryagin classes."""
 l_genus(n::Int)
 
 @doc Markdown.doc"""
     a_hat_genus(n::Int)
-Compute the (generic) $n$-th $\hat A$ genus."""
+Compute the total class of the $\hat A$ genus up to degree $n$, in terms of the
+Pontryagin classes."""
 a_hat_genus(n::Int)
 
 @doc Markdown.doc"""
