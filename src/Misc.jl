@@ -72,6 +72,7 @@ end
   F(cst_num)//F(cst_denom)
 end
 (F::Nemo.FlintRationalField)(x::Singular.n_transExt) = F(Singular.QQ(x))
+promote_rule(::Type{spoly{T}}, ::Type{fmpq}) where T <: RingElem = spoly{T}
 
 ###############################################################################
 #

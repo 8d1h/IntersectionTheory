@@ -146,25 +146,22 @@ end
 Base.parent(x::ChRingElem) = x.parent
 Nemo.parent_type(::Type{ChRingElem}) = ChRing
 
+# promotion
+for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt]
+  @eval promote_rule(::Type{ChRingElem}, ::Type{$T}) = ChRingElem
+end
+promote_rule(::Type{ChRingElem}, ::Type{T}) where T <: Singular.n_unknown = ChRingElem
+promote_rule(::Type{ChRingElem}, ::Type{T}) where T <: MPolyElem = ChRingElem
+
+# arithmetic
 -(x::ChRingElem) = x.parent(-x.f)
 # reduction for `*` and `^` only
 for (O, reduce) in [:(+) => false, :(-) => false, :(*) => true]
   @eval $O(x::ChRingElem, y::ChRingElem) = (
     (x, y) = _coerce(x, y);
     x.parent($O(x.f, y.f), reduce=$reduce))
-  for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt, :MPolyElem]
-    @eval $O(a::$T, x::ChRingElem) = (
-      x.parent($O(a, x.f), reduce=$reduce))
-    @eval $O(x::ChRingElem, a::$T) = (
-      x.parent($O(x.f, a), reduce=$reduce))
-  end
 end
 ^(x::ChRingElem, n::Int) = x.parent(x.f^n, reduce=true)
-
-for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt, :MPolyElem]
-  @eval ==(a::$T, x::ChRingElem) = x.parent(a) == x
-  @eval ==(x::ChRingElem, a::$T) = x.parent(a) == x
-end
 ==(x::ChRingElem, y::ChRingElem) = (
   (x, y) = _coerce(x, y);
   R = x.parent;
