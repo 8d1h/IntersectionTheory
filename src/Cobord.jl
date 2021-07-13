@@ -1,4 +1,3 @@
-
 Nemo.elem_type(::Type{CobordRing}) = CobordRingElem
 Nemo.parent_type(::Type{CobordRingElem}) = CobordRing
 
@@ -15,8 +14,15 @@ Base.show(io::IO, R::CobordRing) = print(io, "Cobordism Ring")
 zero(R::CobordRing) = R(Dict{Int, Vector{fmpq}}())
 one(R::CobordRing) = R(1)
 (R::CobordRing)(x::CobordRingElem) = (@assert parent(x) == R; x)
-==(x::CobordRingElem, y::CobordRingElem) = x.f == y.f
+simplify!(x::CobordRingElem) = begin
+  for k in keys(x.f)
+    if all(iszero, x.f[k]) pop!(x.f, k) end
+  end;
+  x
+end
+==(x::CobordRingElem, y::CobordRingElem) = (simplify!(x); simplify!(y); x.f == y.f)
 Base.getindex(R::CobordRing, n::Int) = R(Dict([n=>[λ == [n] ? QQ(1) : QQ(0) for λ in partitions(n)]]))
+Base.getindex(x::CobordRingElem, n::Int) = n in keys(x.f) ? Omega(Dict([n => x.f[n]])) : Omega()
 
 mul!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (c.f = (a * b).f; c)
 add!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (c.f = (a + b).f; c)
@@ -164,7 +170,10 @@ function _chern_Pn(n::Int)
   if !(n in keys(B))
     P = partitions(n)
     Pn = [proj(k) for k in 1:n]
-    c = Dict([λ => chern_numbers(prod(Pn[d] for d in λ)) for λ in P])
+    c = Dict{Partition, Dict{Partition, fmpq}}()
+    for λ in P
+      c[λ] = chern_numbers(prod(Pn[d] for d in λ))
+    end
     B[n] = Nemo.matrix(QQ, [c[μ][λ] for λ in P, μ in P])
   end
   B[n]
@@ -188,7 +197,7 @@ with given Chern numbers $c_1^2$ and $c_2$.
 """
 function hilb_surface(n::Int, c1_2::Int, c2::Int)
   HS = _H(n, c1_2, c2)
-  collect(Nemo.coeffs(HS[n].f))[1]
+  coeff(HS, [n])
 end
 
 @doc Markdown.doc"""
@@ -211,32 +220,30 @@ function _H(n::Int, c1_2::Int, c2::Int)
 end
 
 @doc Markdown.doc"""
-    universal_genus(n::Int)
-    universal_genus(n::Int, t::Int)
+    universal_genus(n::Int; twist::Int=0)
+    universal_genus(n::Int, phi::Function; twist::Int=0)
 Compute the total class of the universal genus up to degree $n$, possibly with
-a twist $t$, in terms of the Chern classes."""
-function universal_genus(n::Int, t::Int=0)
+a twist $t$, in terms of the Chern classes.
+
+One can also compute the total class of an arbitrary genus, by specifying the
+images of the projective spaces using a function `phi`.
+"""
+function universal_genus(n::Int, phi::Function=k -> Omega[k]; twist::Int=0)
   n == 0 && return Omega(1)
-  R = ChRing(Nemo.PolynomialRing(Omega, _parse_symbol("c", 1:n))[1], collect(1:n), :variety_dim=>n)
-  _genus(_logg(sum(gens(R))), _taylor(n), twist = QQ(t))
+  taylor = _taylor(n, [phi(k) for k in 1:n])
+  R = ChRing(Nemo.PolynomialRing(parent(taylor[1]), _parse_symbol("c", 1:n))[1], collect(1:n), :variety_dim=>n)
+  _genus(_logg(sum(gens(R))), taylor, twist = QQ(twist))
 end
 
-# XXX this needs to be improved!
-function _taylor(n::Int)
-  T = get_special(Omega, :taylor)
-  if T == nothing
-    T = Dict{Int, CobordRingElem}([0 => Omega(1)])
-    set_special(Omega, :taylor => T)
-  end
-  if !(n in keys(T))
-    if n == 1
-      T[1] = 1//2*Omega[1]
-    else
-      R = ChRing(Nemo.PolynomialRing(Omega, _parse_symbol("c", 1:n))[1], collect(1:n), :variety_dim=>n)
-      T[n] = 1//(n+1)*(Omega[n] - integral(Omega[n], _genus(_logg(sum(gens(R))), push!(_taylor(n-1), Omega(0)))))
-    end
-  end
-  [T[k] for k in 0:n]
+function _taylor(n::Int, v::Vector{T}=[Omega[k] for k in 1:n]) where T <: RingElement
+  F = parent(v[1])
+  n == 0 && return [F(1)]
+  ans = _taylor(n-1, v)
+  R = ChRing(Nemo.PolynomialRing(F, ["h"])[1], [1], :variety_dim=>n)
+  h = gens(R)[1]
+  chTP = sum(ZZ(n+1)//factorial(ZZ(i))*h^i for i in 1:n) # ad hoc ch(proj(n).T)
+  ans[n+1] = 1//(n+1)*(v[n] - coeff(_genus(chTP, push!(ans, F(0))), [n]))
+  ans
 end
 
 @doc Markdown.doc"""
@@ -245,16 +252,23 @@ Construct the cobordism class of a hyperkähler variety of
 $\mathrm{Kum}_{n}$-type.
 """
 function generalized_kummer(n::Int)
-  n += 1
-  Rz = ChRing(Nemo.PolynomialRing(Omega, ["z"])[1], [1], :variety_dim=>n)
+  hilb_S, c₁² = hilb_P2, 9 # one can also use (hilb_P1xP1, 8)
+  Rz = ChRing(Nemo.PolynomialRing(Omega, ["z"])[1], [1], :variety_dim=>n+1)
   z = gens(Rz)[1]
-  H = [Omega(hilb_P2(k)) for k in 1:n]
-  K1 = collect(Nemo.coeffs(_logg(sum(integral(H[k], universal_genus(2k, 1)) * z^k for k in 1:n))[n].f))[1]
-  # avoid computing id_{-1}, by simply removing the odd-degree terms
-  K1 = Omega(Dict([λ => K1.f[λ] for λ in keys(K1.f) if iseven(sum(λ))]))
-  K = K1 - collect(Nemo.coeffs(_logg(sum(H[k] * z^k for k in 1:n))[n].f))[1]
-  n//9 * (-1)^(n-1) * factorial(n) * 2K
+  H = [Omega(hilb_S(k)) for k in 1:n+1]
+  g = universal_genus(2(n+1), twist=1)
+  K = coeff(_logg(sum(integral(H[k], g) * z^k for k in 1:n+1)), [n+1])[2n]
+  (-1)^n * QQ(n+1, c₁²) * factorial(ZZ(n+1)) * 2K
 end
+
+@doc Markdown.doc"""
+    milnor(X::Variety)
+    milnor(x::CobordRingElem)
+Compute the Milnor number $n!\cdot \int_X\mathrm{ch}_n(T_X) of a variety $X$ or
+a cobordism class $x$ of dimension $n$.
+"""
+milnor(X::Variety) = factorial(ZZ(dim(X))) * integral(ch(X.T))
+milnor(x::CobordRingElem) = factorial(ZZ(dim(x))) * integral(x, ch(variety(dim(x)).T))
 
 function OG6()
   Omega(

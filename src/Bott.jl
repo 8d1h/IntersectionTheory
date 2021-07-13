@@ -150,6 +150,7 @@ chern(F::TnBundle, x::MPolyElem) = begin
   @assert length(gens(R)) == length(gens(parent(x)))
   TnBundleChern(F, Nemo.evaluate(x, gens(R)))
 end
+ch(F::TnBundle) = chern(F, F.rank + _logg(chern(F).c).f)
 todd(X::TnVariety) = chern(X.T, todd(dim(X))[dim(X)].f)
 
 # compute multiple integrals simultaneously to avoid redundant computations

@@ -170,6 +170,8 @@ end
   R = x.parent;
   R(x.f, reduce=true).f == R(y.f, reduce=true).f)
 
+coeff(x::ChRingElem, exps::Vector{Int}) = coeff(x.f, exps)
+
 function total_degree(x::ChRingElem)
   R = x.parent
   f = R(x.f, reduce=true).f

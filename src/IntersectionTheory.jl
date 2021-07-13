@@ -8,7 +8,7 @@ import Markdown
 
 import Base: +, -, *, ^, ==, div, zero, one, parent, mod, deepcopy
 import Nemo: fmpz, fmpq, ZZ, QQ
-import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli
+import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli, coeff
 import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!, MPolyElem
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
@@ -24,7 +24,7 @@ const GG = GAP.Globals
 
 export Nemo, Singular
 export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ
-export total_degree, ishomogeneous
+export total_degree, ishomogeneous, coeff
 export proj, grassmannian, flag, point, curve, variety, bundle
 export pullback, pushforward, hom
 export bundles, tangent_bundle, cotangent_bundle, canonical_bundle, canonical_class
@@ -32,7 +32,7 @@ export exterior_power, symmetric_power, det, schur_functor
 export dim, degree, rank, basis, intersection_matrix, dual_basis
 export simplify, simplify!, inv, base_ring, gens, domain, codomain, betti
 export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop, pontryagin
-export chern_number, chern_numbers, l_genus, a_hat_genus, signature
+export chern_number, chern_numbers, l_genus, a_hat_genus, signature, milnor
 export hilbert_polynomial, libgober_wood_polynomial
 export section_zero_locus, complete_intersection, degeneracy_locus
 export schubert_class, schubert_classes

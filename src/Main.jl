@@ -930,8 +930,7 @@ function _genus(x::ChRingElem, taylor::Vector{T}; twist::U=0) where {T <: RingEl
   S, (t,) = Nemo.PolynomialRing(parent(taylor[1]), ["t"])
   S = ChRing(S, [1], :variety_dim => n)
   lg = _logg(S(sum(taylor[i+1] * t^i for i in 0:n)))
-  comps = lg[1:n]
-  lg = [leading_coefficient(comps[i].f) for i in 1:n]
+  lg = [coeff(lg, [i]) for i in 1:n]
   comps = x[1:n]
   _expp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n) + twist * gens(R)[1])
 end
