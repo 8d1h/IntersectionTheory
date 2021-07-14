@@ -6,31 +6,37 @@ deepcopy(x::CobordRingElem) = parent(x)(deepcopy(x.f))
 
 Base.show(io::IO, R::CobordRing) = print(io, "Cobordism Ring")
 
-(R::CobordRing)(f::Dict{Int, Vector{fmpq}}) = CobordRingElem(R, f)
-(R::CobordRing)(n::T) where T <: Union{Int, Rational, fmpz, fmpq} = R(Dict([0 => [QQ(n)]]))
-(R::CobordRing)() = R(Dict{Int, Vector{fmpq}}())
-zero(R::CobordRing) = R(Dict{Int, Vector{fmpq}}())
+(R::CobordRing)(f::ChRingElem) = begin
+  parent(f) == R.R && return CobordRingElem(R, R.n, f)
+  n = length(gens(parent(f)))
+  R[n]
+  CobordRingElem(R, R.n, f.f(gens(R.R)[1:n]...))
+end
+(R::CobordRing)(n::T) where T <: Union{Int, Rational, fmpz, fmpq} = (R[1]; CobordRingElem(R, R.n, R.R(n)))
+(R::CobordRing)() = R(0)
+zero(R::CobordRing) = R(0)
 one(R::CobordRing) = R(1)
 (R::CobordRing)(x::CobordRingElem) = (@assert parent(x) == R; x)
-simplify!(x::CobordRingElem) = begin
-  for k in keys(x.f)
-    if all(iszero, x.f[k]) pop!(x.f, k) end
-  end;
-  x
+# get the n-th generator, extending the ring if necessary
+function Base.getindex(R::CobordRing, n::Int)
+  if R.n < n
+    R.n = max(2R.n, 1) # double the number of generators
+    S = Nemo.PolynomialRing(QQ, ["[P$i]" for i in 1:R.n])[1]
+    R.R = ChRing(S, collect(1:R.n))
+  end
+  R(gens(R.R)[n])
 end
-==(x::CobordRingElem, y::CobordRingElem) = (simplify!(x); simplify!(y); x.f == y.f)
-Base.getindex(R::CobordRing, n::Int) = R(Dict([n=>[λ == [n] ? QQ(1) : QQ(0) for λ in partitions(n)]]))
-Base.getindex(x::CobordRingElem, n::Int) = n in keys(x.f) ? Omega(Dict([n => x.f[n]])) : Omega()
+Base.getindex(x::CobordRingElem, n::Int) = x.parent(x.f[n])
 
-mul!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (c.f = (a * b).f; c)
-add!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (c.f = (a + b).f; c)
-addeq!(a::CobordRingElem, b::CobordRingElem) = (a.f = (a + b).f; a)
+mul!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (ab = a * b; c.n = ab.n; c.f = ab.f; c)
+add!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (ab = a + b; c.n = ab.n; c.f = ab.f; c)
+addeq!(a::CobordRingElem, b::CobordRingElem) = (ab = a + b; a.n = ab.n; a.f = ab.f; a)
 
 function (R::CobordRing)(X::Variety)
   if X isa AbsVariety
     @assert integral(X(0)) isa fmpq
   end
-  CobordRingElem(R, Dict([dim(X) => _to_Pn(X)]))
+  R(chern_numbers(X))
 end
 
 @doc Markdown.doc"""
@@ -42,96 +48,31 @@ function (R::CobordRing)(c::Dict{T, fmpq}) where T <: Partition
   P = collect(keys(c))
   n = sum(P[1])
   @assert all(x -> sum(x) == n, P)
-  CobordRingElem(R, Dict([n => _to_Pn(n, c)]))
+  R[n]
+  p = gens(R.R)[1:n]
+  v = _to_Pn(n, c)
+  R(sum(v[i] * prod(p[d] for d in λ) for (i, λ) in enumerate(partitions(n))))
 end
 
 function expressify(x::CobordRingElem; context = nothing)
-  ans = Expr(:call, :+)
-  for d in sort(collect(keys(x.f)))
-    if d == 0 && x.f[d][1] != 0
-      push!(ans.args, expressify(x.f[d][1], context = context))
-    elseif d > 0
-      P = partitions(d)
-      for (c, p) in zip(x.f[d], P)
-	if !iszero(c)
-	  push!(ans.args, Expr(:call, :*, expressify(c, context = context), "[$(_print_Pn(p))]"))
-	end
-      end
-    end
-  end
-  ans
-end
-
-Base.show(io::IO, x::CobordRingElem) =
-  print(io, AbstractAlgebra.obj_to_string(x))
-
-function _print_Pn(p::Partition)
-  join(["P$i" for i in p], "x")
+  expressify(x.f, context = context)
 end
 
 for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q]
   @eval promote_rule(::Type{CobordRingElem}, ::Type{$T}) = CobordRingElem
 end
 
-### ad hoc arithmetics
-
-function +(x::CobordRingElem, y::CobordRingElem)
-  ds = union(keys(x.f), keys(y.f))
-  ans = parent(x)()
-  for d in ds
-    fd = sum(f[d] for f in [x.f, y.f] if d in keys(f))
-    if !all(iszero, fd)
-      ans.f[d] = fd
-    end
-  end
-  ans
-end
-
-function -(x::CobordRingElem)
-  ans = parent(x)()
-  for d in keys(x.f)
-    ans.f[d] = -x.f[d]
-  end
-  ans
-end
-
-function -(x::CobordRingElem, y::CobordRingElem)
-  x + -y
-end
-
-function *(x::CobordRingElem, y::CobordRingElem)
-  ans = parent(x)()
-  for d in keys(x.f)
-    Pd = partitions(d)
-    for e in keys(y.f)
-      Pe = partitions(e)
-      Pde = partitions(d+e)
-      fde = Dict([p => QQ() for p in Pde])
-      for (a, p) in zip(x.f[d], Pd)
-	for (b, q) in zip(y.f[e], Pe)
-	  fde[Partition(sort(vcat(p, q), rev=true))] += a*b
-	end
-      end
-      fde = [fde[λ] for λ in Pde]
-      if d+e in keys(ans.f)
-	ans.f[d+e] += fde
-      else
-	ans.f[d+e] = fde
-      end
-    end
-  end
-  ans
-end
-
-function ^(x::CobordRingElem, n::Int)
-  n == 0 && return one(parent(x))
-  prod(repeat([x], n))
-end
+-(x::CobordRingElem) = x.parent(-x.f)
++(x::CobordRingElem, y::CobordRingElem) = (@assert parent(x) == parent(y); R = parent(x); R(R(x.f).f + R(y.f).f))
+-(x::CobordRingElem, y::CobordRingElem) = (@assert parent(x) == parent(y); R = parent(x); R(R(x.f).f - R(y.f).f))
+*(x::CobordRingElem, y::CobordRingElem) = (@assert parent(x) == parent(y); R = parent(x); R(R(x.f).f * R(y.f).f))
+==(x::CobordRingElem, y::CobordRingElem) = (@assert parent(x) == parent(y); R = parent(x); R(x.f).f == R(y.f).f)
+^(x::CobordRingElem, n::Int) = x.parent(x.f^n)
 
 function dim(x::CobordRingElem)
-  ds = collect(keys(x.f))
-  length(ds) == 1 || error("the element is not equidimensional")
-  ds[1]
+  n = total_degree(x.f)
+  x == x[n] || error("the element is not equidimensional")
+  n
 end
 
 @doc Markdown.doc"""
@@ -147,7 +88,9 @@ chern_numbers(x::CobordRingElem)
   
 function chern_numbers(x::CobordRingElem, P::Vector{<:Partition}=partitions(dim(x)); nonzero::Bool=false)
   d = dim(x)
-  c = _chern_Pn(d)[[i for (i, λ) in enumerate(partitions(d)) if λ in P], :] * Nemo.matrix(QQ, x.f[d][:, :])
+  Pd = partitions(d)
+  f = λ -> (ans = repeat([0], x.n); for i in λ if i <= x.n ans[i] += 1 end end; ans)
+  c = _chern_Pn(d)[[i for (i, λ) in enumerate(Pd) if λ in P], :] * Nemo.matrix(QQ, [coeff(x.f, f(λ)) for λ in Pd][:, :])
   Dict([λ => c[i] for (i, λ) in enumerate(P) if !nonzero || c[i] != 0])
 end
 

@@ -620,6 +620,7 @@ function *(X::AbsVariety, Y::AbsVariety)
   q = AbsVarietyHom(XY, Y, XY.(x[a+1:end]))
   if isdefined(X, :T) && isdefined(Y, :T)
     XY.T = pullback(p, X.T) + pullback(q, Y.T)
+    XY.T.chern = pullback(p, chern(X.T)) * pullback(q, chern(Y.T))
   end
   if isdefined(X, :O1) && isdefined(Y, :O1) # Segre embedding
     XY.O1 = p.pullback(X.O1) + q.pullback(Y.O1)

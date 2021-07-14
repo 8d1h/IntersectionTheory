@@ -60,16 +60,22 @@ end
 # CobordRing and CobordRingElem
 #
 mutable struct CobordRing <: Ring
+  n::Int
+  R::ChRing
   @declare_other
+  function CobordRing()
+    new(0)
+  end
 end
 
 mutable struct CobordRingElem <: RingElem
   parent::CobordRing
-  f::Dict{Int, Vector{fmpq}}
+  n::Int
+  f::ChRingElem
 end
 
 # THE cobordism ring
-const Omega = CobordRing(Dict{Symbol, Any}())
+const Omega = CobordRing()
 @doc Markdown.doc"""
     cobordism_ring()
 Return $\Omega$, the (complex) cobordism ring with rational coefficients."""
@@ -152,12 +158,6 @@ function expressify(x::ChRingElem; context = nothing)
   end
   return ans
 end
-Base.show(io::IO, x::ChRingElem) =
-  print(io, AbstractAlgebra.obj_to_string(x))
-Base.show(io::IO, mi::MIME"text/latex", x::ChRingElem) =
-  print(io, AbstractAlgebra.obj_to_latex_string(x))
-Base.show(io::IO, mi::MIME"text/html", x::ChRingElem) =
-  print(io, "\$" * AbstractAlgebra.obj_to_latex_string(x) * "\$")
 
 Nemo.elem_type(::Type{ChRing}) = ChRingElem
 

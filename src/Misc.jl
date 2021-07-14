@@ -88,6 +88,13 @@ function _parse_symbol(symbol::String, n::Int, I::UnitRange)
   [symbol*subscriptify(n)*","*subscriptify(i) for i in I]
 end
 
+Base.show(io::IO, x::T) where T <: RingElem =
+  print(io, AbstractAlgebra.obj_to_string(x))
+Base.show(io::IO, mi::MIME"text/html", x::T) where T <: RingElem =
+  print(io, "\$" * AbstractAlgebra.obj_to_latex_string(x) * "\$")
+Base.show(io::IO, mi::MIME"text/html", x::T) where T <: Nemo.MatElem =
+  print(io, "\$\\left[" * AbstractAlgebra.obj_to_latex_string(x) * "\\right]\$")
+
 # taken from Hecke
 function Base.show(io::IO, mime::MIME"text/html", T::Tuple)
   print(io, "(")
