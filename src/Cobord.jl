@@ -4,8 +4,6 @@ Nemo.parent_type(::Type{CobordRingElem}) = CobordRing
 Base.parent(x::CobordRingElem) = x.parent
 deepcopy(x::CobordRingElem) = parent(x)(deepcopy(x.f))
 
-const Omega = CobordRing(Dict{Symbol, Any}())
-
 Base.show(io::IO, R::CobordRing) = print(io, "Cobordism Ring")
 
 (R::CobordRing)(f::Dict{Int, Vector{fmpq}}) = CobordRingElem(R, f)
@@ -34,6 +32,10 @@ function (R::CobordRing)(X::Variety)
   end
   CobordRingElem(R, Dict([dim(X) => _to_Pn(X)]))
 end
+
+@doc Markdown.doc"""
+    cobordism_class(X::Variety)
+Construct the cobordism class of a variety $X$."""
 cobordism_class(X::Variety) = Omega(X)
 
 function (R::CobordRing)(c::Dict{T, fmpq}) where T <: Partition
@@ -67,20 +69,11 @@ function _print_Pn(p::Partition)
   join(["P$i" for i in p], "x")
 end
 
-### ad hoc arithmetics
-
 for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q]
-  @eval function *(x::CobordRingElem, a::$T)
-    ans = deepcopy(x)
-    for d in keys(ans.f)
-      ans.f[d] .*= a
-    end
-    ans
-  end
-  @eval function *(a::$T, x::CobordRingElem)
-    x * a
-  end
+  @eval promote_rule(::Type{CobordRingElem}, ::Type{$T}) = CobordRingElem
 end
+
+### ad hoc arithmetics
 
 function +(x::CobordRingElem, y::CobordRingElem)
   ds = union(keys(x.f), keys(y.f))
@@ -141,10 +134,21 @@ function dim(x::CobordRingElem)
   ds[1]
 end
 
-function chern_numbers(x::CobordRingElem, P::Vector{T}=partitions(dim(x)); nontriv::Bool=false) where T <: Partition
+@doc Markdown.doc"""
+    chern_numbers(x::CobordRingElem)
+    chern_numbers(x::CobordRingElem, P::Vector{<:Partition})
+    chern_numbers(x::CobordRingElem; nonzero::Bool)
+Compute all the Chern numbers of a cobordism class $[X]$ as a dictionary of
+$\lambda\Rightarrow c_\lambda(X)$, or only those corresponding to partitions in
+a given vector. Use the argument `nonzero=true` to display only the non-zero
+ones.
+"""
+chern_numbers(x::CobordRingElem)
+  
+function chern_numbers(x::CobordRingElem, P::Vector{<:Partition}=partitions(dim(x)); nonzero::Bool=false)
   d = dim(x)
   c = _chern_Pn(d)[[i for (i, λ) in enumerate(partitions(d)) if λ in P], :] * Nemo.matrix(QQ, x.f[d][:, :])
-  Dict([λ => c[i] for (i, λ) in enumerate(P) if !nontriv || c[i] != 0])
+  Dict([λ => c[i] for (i, λ) in enumerate(P) if !nonzero || c[i] != 0])
 end
 
 function euler(x::CobordRingElem)
@@ -152,14 +156,19 @@ function euler(x::CobordRingElem)
   chern_numbers(x, [p])[p]
 end
 
+@doc Markdown.doc"""
+    integral(x::CobordRingElem, t::ChRingElem)
+Compute the integral of an expression in terms of the Chern classes over a
+cobordism class.
+"""
 function integral(x::CobordRingElem, t::ChRingElem)
   t = t[dim(x)]
   c = chern_numbers(x)
   f = v -> Partition(vcat([repeat([n], v[n]) for n in length(v):-1:1]...))
-  ans = sum(c[f(v)] * a for (a, v) in zip(Nemo.coeffs(t.f), Nemo.exponent_vectors(t.f)) if a != 0)
-  # convert ans to fmpq in case that we get a Singular n_Q
-  ans isa n_Q ? QQ(ans) : ans
+  ans = sum(c[f(v)] * (a isa n_Q ? QQ(a) : a) for (a, v) in zip(Nemo.coefficients(t.f), Nemo.exponent_vectors(t.f)) if a != 0)
 end
+
+todd(x::CobordRingElem) = integral(x, todd(dim(x)))
 
 function _chern_Pn(n::Int)
   B = get_special(Omega, :basis)
@@ -229,20 +238,20 @@ One can also compute the total class of an arbitrary genus, by specifying the
 images of the projective spaces using a function `phi`.
 """
 function universal_genus(n::Int, phi::Function=k -> Omega[k]; twist::Int=0)
-  n == 0 && return Omega(1)
-  taylor = _taylor(n, [phi(k) for k in 1:n])
+  n == 0 && return one(phi(1))
+  taylor = _taylor(n, phi)
   R = ChRing(Nemo.PolynomialRing(parent(taylor[1]), _parse_symbol("c", 1:n))[1], collect(1:n), :variety_dim=>n)
   _genus(_logg(sum(gens(R))), taylor, twist = QQ(twist))
 end
 
-function _taylor(n::Int, v::Vector{T}=[Omega[k] for k in 1:n]) where T <: RingElement
-  F = parent(v[1])
+function _taylor(n::Int, phi::Function=k -> Omega[k])
+  F = parent(phi(1))
   n == 0 && return [F(1)]
-  ans = _taylor(n-1, v)
+  ans = _taylor(n-1, phi)
   R = ChRing(Nemo.PolynomialRing(F, ["h"])[1], [1], :variety_dim=>n)
   h = gens(R)[1]
   chTP = sum(ZZ(n+1)//factorial(ZZ(i))*h^i for i in 1:n) # ad hoc ch(proj(n).T)
-  ans[n+1] = 1//(n+1)*(v[n] - coeff(_genus(chTP, push!(ans, F(0))), [n]))
+  ans[n+1] = 1//(n+1)*(phi(n) - coeff(_genus(chTP, push!(ans, F(0))), [n]))
   ans
 end
 
@@ -263,9 +272,7 @@ end
 
 @doc Markdown.doc"""
     milnor(X::Variety)
-    milnor(x::CobordRingElem)
-Compute the Milnor number $n!\cdot \int_X\mathrm{ch}_n(T_X) of a variety $X$ or
-a cobordism class $x$ of dimension $n$.
+Compute the Milnor number $n! \int_X\mathrm{ch}_n(T_X)$ of a variety $X$.
 """
 milnor(X::Variety) = factorial(ZZ(dim(X))) * integral(ch(X.T))
 milnor(x::CobordRingElem) = factorial(ZZ(dim(x))) * integral(x, ch(variety(dim(x)).T))

@@ -174,7 +174,7 @@ function blowup_points(n::Int, X::AbsVariety; symbol::String="e")
   Bl = X
   symbs = _parse_symbol(symbol, 1:n)
   for i in 1:n
-    Bl = blowup(point() → Bl, symbol=symbs[i])[1]
+    Bl = blowup(point(base = X.base) → Bl, symbol=symbs[i])[1]
   end
   set_special(Bl, :description => "Blowup of $X at $n points")
   Bl.struct_map = hom(Bl, X)

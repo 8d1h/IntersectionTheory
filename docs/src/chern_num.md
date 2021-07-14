@@ -17,8 +17,12 @@ of projective spaces. We implemented the interface `CobordRing` and
 `CobordRingElem` to model $\Omega$ and its elements. The main application will
 be the computation of Chern numbers for Hilbert schemes of points on a surface
 and for generalized Kummer varieties.
+```@docs
+cobordism_ring
+cobordism_class
+```
 ```@repl repl
-Ω = IntersectionTheory.Omega
+Ω = cobordism_ring()
 Ω[1]
 (1 + Ω[1])^2 + Ω[2]
 Nemo.PolynomialRing(Ω, ["z"])[1]
@@ -31,12 +35,16 @@ class.
 ```@repl repl
 K3 = complete_intersection(proj(3), 4)
 Ω(K3)
+cobordism_class(K3)
 Ω(flag(1,2,3,bott=true))
 ```
 
 Each cobordism class is uniquely determined by its Chern numbers and vice
 versa, so we can perform conversions between a cobordism class and a dictionary
 of Chern numbers.
+```@docs
+chern_numbers(x::CobordRingElem)
+```
 ```@repl repl
 chern_numbers(Ω(K3))
 Ω(chern_numbers(K3))
@@ -45,6 +53,9 @@ chern_numbers(Ω(K3))
 For a top-degree expression in terms of the Chern classes, its integral depends
 only on the Chern numbers, hence we can perform integration against a cobordism
 class. We also show the usual integration in Chow ring as a comparison.
+```@docs
+integral(x::CobordRingElem, t::ChRingElem)
+```
 ```@repl repl
 integral(Ω[4], todd(4)),                     integral(todd(proj(4)))
 integral(Ω[2]^2, sqrt(todd(4))),             integral(sqrt(todd(proj(2)*proj(2))))
@@ -143,13 +154,13 @@ X = hilb_P2(2)
 chern_numbers(X)
 hilb_surface(2, 0, 24)
 hilb_K3(2)
-chern_numbers(hilb_K3(2), nontriv=true)
+chern_numbers(hilb_K3(2), nonzero=true)
 integral(hilb_K3(2), sqrt(todd(4)))
 ```
 We record the Chern numbers of $\mathrm{K3}^{[n]}$ with $n\in\{5,6,7\}$, since
 these are not found in the literature.
 ```julia-repl
-julia> chern_numbers(hilb_K3(5), nontriv=true)
+julia> chern_numbers(hilb_K3(5), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 7 entries:
   10₁  => 176256
   6₁4₁ => 5075424
@@ -159,7 +170,7 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 7 entries:
   2₅   => 126867456
   4₂2₁ => 21921408
 
-julia> chern_numbers(hilb_K3(6), nontriv=true)
+julia> chern_numbers(hilb_K3(6), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 11 entries:
   6₁4₁2₁ => 392090040
   8₁4₁   => 59314272
@@ -173,7 +184,7 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 11 entries:
   4₂2₂   => 1650311720
   6₂     => 93495320
 
-julia> chern_numbers(hilb_K3(7), nontriv=true)
+julia> chern_numbers(hilb_K3(7), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 15 entries:
   8₁6₁   => 1296158976
   10₁4₁  => 569044224
@@ -204,7 +215,7 @@ generalized_kummer
 ### Examples
 ```@repl repl
 generalized_kummer(2)
-chern_numbers(generalized_kummer(2), nontriv=true)
+chern_numbers(generalized_kummer(2), nonzero=true)
 ```
 
 ## A polynomial defined by Libgober--Wood

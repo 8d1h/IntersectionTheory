@@ -429,6 +429,7 @@ euler(X::AbsVariety) = integral(chern(X.T))
 
 @doc Markdown.doc"""
     todd(X::AbsVariety)
+    todd(X::TnVariety)
 Compute the Todd class of the tangent bundle of $X$."""
 todd(X::AbsVariety) = todd(X.T)
 
@@ -476,11 +477,13 @@ end
 
 @doc Markdown.doc"""
     chern_numbers(X::Variety)
-    chern_numbers(X::Variety, P::Vector{Partition})
+    chern_numbers(X::Variety, P::Vector{<:Partition})
 Compute all the Chern numbers of $X$ as a dictionary of $\lambda\Rightarrow
 c_\lambda(X)$, or only those corresponding to partitions in a given vector.
 """
-function chern_numbers(X::AbsVariety, P::Vector{T}=partitions(dim(X))) where T <: Partition
+chern_numbers(X::Variety)
+
+function chern_numbers(X::AbsVariety, P::Vector{<:Partition}=partitions(dim(X)))
   all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
   c = chern(X)[1:dim(X)]
   Dict([λ => integral(prod([c[i] for i in λ])) for λ in P])

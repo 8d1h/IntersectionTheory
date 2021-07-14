@@ -14,6 +14,7 @@ degree
 euler
 hilbert_polynomial
 signature
+milnor
 ```
 ### Examples
 ```@repl repl
@@ -29,7 +30,7 @@ the Chern/Todd/... class of its tangent bundle.
 chern(X::AbsVariety)
 chern(k::Int, X::AbsVariety)
 chern_number
-chern_numbers
+chern_numbers(X::Variety)
 todd(X::AbsVariety)
 pontryagin(X::AbsVariety)
 pontryagin(k::Int, X::AbsVariety)
@@ -63,7 +64,7 @@ l_genus(2)
 ```@docs
 basis
 betti
-integral
+integral(x::ChRingElem)
 dual_basis
 intersection_matrix
 ```

@@ -351,6 +351,12 @@ end
   @test betti(Bl) == [1,2,4,4,4,2,1]
   @test [chi(exterior_power(i, cotangent_bundle(Bl))) for i in 0:6] == [1,-2,4,-4,4,-2,1]
 
+  @test blowup_points(1, proj(2)) isa IntersectionTheory.AbsVariety
+  P, n = proj(2, param="n")
+  B = blowup_points(1, P)
+  @test B.base isa Singular.N_FField
+  @test rank(n*OO(B)) == n
+
 end
 
 @testset "Moduli" begin
@@ -368,4 +374,36 @@ end
   @test betti(H) == [1,2,6,10,16,19,22,19,16,10,6,2,1]
   @test euler(H) == 130
   
+end
+
+@testset "Cobordism" begin
+
+  Omega = cobordism_ring()
+  P1, P2 = Omega[1], Omega[2]
+  @test Omega(proj(1)) == P1
+  @test Omega(grassmannian(1,2,bott=true)) == P1
+
+  K3 = complete_intersection(proj(3), 4)
+  @test Omega(K3) == -16P2 + 18P1^2
+  @test cobordism_class(K3) == -16P2 + 18P1^2
+
+  g = universal_genus(2)
+  c = gens(parent(g))
+  @test g[1] == 1//2*P1 * c[1]
+  @test g == 1 + 1//2*P1 * c[1] + (1//3*P2 - 1//4*P1^2)*c[1]^2 + (-2//3*P2 + 3//4*P1^2)*c[2]
+  @test integral(P2, g) == P2
+
+  td = universal_genus(5, k -> QQ(1))
+  R = parent(td)
+  @test td == R(todd(5))
+  @test integral(P2, td) == 1
+
+  @test hilb_P2(1) isa IntersectionTheory.TnVariety
+  @test hilb_P1xP1(1) isa IntersectionTheory.TnVariety
+  @test Omega(hilb_P2(1)) == P2
+  @test Omega(hilb_P1xP1(1)) == P1*P1
+
+  @test hilb_K3(1) == Omega(K3)
+  @test generalized_kummer(1) == Omega(K3)
+
 end
