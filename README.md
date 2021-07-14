@@ -1,5 +1,6 @@
 # IntersectionTheory
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://8d1h.github.io/IntersectionTheory/dev/)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/8d1h/IntersectionTheory/master?filepath=demo.ipynb)
 
 *IntersectionTheory* is an early stage Julia package for doing computations in intersection theory, built using the components of [Oscar](https://oscar.computeralgebra.de/) ([Nemo](https://nemocas.org/), [Singular.jl](https://github.com/oscar-system/Singular.jl), and [GAP.jl](https://github.com/oscar-system/GAP.jl)).
 
