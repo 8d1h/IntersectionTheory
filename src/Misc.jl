@@ -3,20 +3,6 @@
 # some utility functions
 #
 
-# XXX division for n_unknown{Nemo.FieldElem}
-# remove once this is in Singular.jl
-function div(x::Singular.spoly{T}, y::Singular.spoly{T}) where T <: Singular.n_unknown{S} where S <: Nemo.FieldElem
-   Singular.check_parent(x, y)
-   R = parent(x)
-   GC.@preserve x y R begin
-      px = Singular.libSingular.p_Copy(x.ptr, R.ptr)
-      py = Singular.libSingular.p_Copy(y.ptr, R.ptr)
-      q = R(Singular.libSingular.p_Divide(px, py, R.ptr))
-      Singular.libSingular.check_error()
-      return q
-   end
-end
-
 # partitions of n with at most k numbers each ≤ m
 function partitions(n::Int, k::Int=n, m::Int=-1)
   ans = Partition[]
@@ -72,7 +58,6 @@ end
   F(cst_num)//F(cst_denom)
 end
 (F::Nemo.FlintRationalField)(x::Singular.n_transExt) = F(Singular.QQ(x))
-promote_rule(::Type{spoly{T}}, ::Type{fmpq}) where T <: RingElem = spoly{T}
 
 ###############################################################################
 #
@@ -113,4 +98,24 @@ function Base.show(io::IO, mime::MIME"text/html", T::Tuple)
     end
   end
   print(io, ")")
+end
+function Base.show(io::IO, mi::MIME"text/html", V::Vector)
+  space = "&nbsp;&nbsp;"
+  if (:compact => true) in io
+    print(io, "[")
+  else
+    print(io, "<pre>$(length(V))-element $(typeof(V)):</pre>$space")
+  end
+  sep = false
+  for x in V
+    if !sep
+      sep = true
+    else
+      print(io, (:compact => true) in io ? ",$space" : "<br>$space")
+    end
+    Base.show(IOContext(io, :compact => true), mi, x)
+  end
+  if (:compact => true) in io
+    print(io, "]")
+  end
 end
