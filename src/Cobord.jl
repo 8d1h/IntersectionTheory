@@ -4,7 +4,12 @@ Nemo.parent_type(::Type{CobordRingElem}) = CobordRing
 Base.parent(x::CobordRingElem) = x.parent
 deepcopy(x::CobordRingElem) = parent(x)(deepcopy(x.f))
 
-Base.show(io::IO, R::CobordRing) = print(io, "Cobordism Ring")
+function Base.show(io::IO, R::CobordRing)
+  print(io, "Cobordism Ring")
+  if R.base isa Singular.N_FField
+    print(io, " with parameters $(tuple(Singular.transcendence_basis(R.base)...))")
+  end
+end
 
 (R::CobordRing)(f::ChRingElem) = begin
   parent(f) == R.R && return CobordRingElem(R, R.n, f)
@@ -12,7 +17,7 @@ Base.show(io::IO, R::CobordRing) = print(io, "Cobordism Ring")
   R[n]
   CobordRingElem(R, R.n, f.f(gens(R.R)[1:n]...))
 end
-(R::CobordRing)(n::T) where T <: Union{Int, Rational, fmpz, fmpq} = (R[1]; CobordRingElem(R, R.n, R.R(n)))
+(R::CobordRing)(n::T) where T <: Union{Int, Rational, fmpz, fmpq, n_transExt} = (R[1]; CobordRingElem(R, R.n, R.R(n)))
 (R::CobordRing)() = R(0)
 zero(R::CobordRing) = R(0)
 one(R::CobordRing) = R(1)
@@ -20,8 +25,10 @@ one(R::CobordRing) = R(1)
 # get the n-th generator, extending the ring if necessary
 function Base.getindex(R::CobordRing, n::Int)
   if R.n < n
-    R.n = max(2R.n, 1) # double the number of generators
-    S = Nemo.PolynomialRing(QQ, ["[P$i]" for i in 1:R.n])[1]
+    while R.n < n
+      R.n = max(2R.n, 1) # double the number of generators
+    end
+    S = Nemo.PolynomialRing(R.base, ["[P$i]" for i in 1:R.n])[1]
     R.R = ChRing(S, collect(1:R.n))
   end
   R(gens(R.R)[n])
@@ -42,9 +49,9 @@ end
 @doc Markdown.doc"""
     cobordism_class(X::Variety)
 Construct the cobordism class of a variety $X$."""
-cobordism_class(X::Variety) = Omega(X)
+cobordism_class(X::Variety; base::Ring=QQ) = cobordism_ring(base=base)(X)
 
-function (R::CobordRing)(c::Dict{T, fmpq}) where T <: Partition
+function (R::CobordRing)(c::Dict{T, U}) where {T <: Partition, U <: RingElement}
   P = collect(keys(c))
   n = sum(P[1])
   @assert all(x -> sum(x) == n, P)
@@ -58,7 +65,7 @@ function expressify(x::CobordRingElem; context = nothing)
   expressify(x.f, context = context)
 end
 
-for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q]
+for T in [:Int, :Rational, :fmpz, :fmpq, :n_Q, :n_transExt]
   @eval promote_rule(::Type{CobordRingElem}, ::Type{$T}) = CobordRingElem
 end
 
@@ -90,7 +97,7 @@ function chern_numbers(x::CobordRingElem, P::Vector{<:Partition}=partitions(dim(
   d = dim(x)
   Pd = partitions(d)
   f = λ -> (ans = repeat([0], x.n); for i in λ if i <= x.n ans[i] += 1 end end; ans)
-  c = _chern_Pn(d)[[i for (i, λ) in enumerate(Pd) if λ in P], :] * Nemo.matrix(QQ, [coeff(x.f, f(λ)) for λ in Pd][:, :])
+  c = Nemo.change_base_ring(parent(x).base, _chern_Pn(d)[[i for (i, λ) in enumerate(Pd) if λ in P], :]) * Nemo.matrix(parent(x).base, [coeff(x.f, f(λ)) for λ in Pd][:, :])
   Dict([λ => c[i] for (i, λ) in enumerate(P) if !nonzero || c[i] != 0])
 end
 
@@ -135,21 +142,28 @@ function _to_Pn(X::Variety)
   _to_Pn(dim(X), chern_numbers(X))
 end
 
-function _to_Pn(n::Int, c::Dict{T, fmpq}) where T <: Partition
-  c = [λ in keys(c) ? c[λ] : QQ() for λ in partitions(n), j in 1:1]
-  vec(collect(Nemo.solve(_chern_Pn(n), Nemo.matrix(QQ, c))))
+function _to_Pn(n::Int, c::Dict{T, U}) where {T <: Partition, U <: RingElement}
+  F = parent(sum(values(c)))
+  if F isa AbstractAlgebra.Integers F = QQ end
+  c = [λ in keys(c) ? c[λ] : F(0) for λ in partitions(n), j in 1:1]
+  vec(collect(Nemo.solve(Nemo.change_base_ring(F, _chern_Pn(n)), Nemo.matrix(F, c))))
 end
 
 # Ellingsrud-Göttsche-Lehn
 # On the cobordism class of the Hilbert scheme of a surface
 @doc Markdown.doc"""
-    hilb_surface(n::Int, c1_2::Int, c2::Int)
+    hilb_surface(n::Int, c₁², c₂)
 Construct the cobordism class of the Hilbert scheme of $n$ points on a surface
 with given Chern numbers $c_1^2$ and $c_2$.
 """
-function hilb_surface(n::Int, c1_2::Int, c2::Int)
-  HS = _H(n, c1_2, c2)
+function hilb_surface(n::Int, c₁²::T, c₂::U) where {T <: RingElement, U <: RingElement}
+  HS = _H(n, c₁², c₂)
   coeff(HS, [n])
+end
+function hilb_surface(n::Int, S::Union{Variety, CobordRingElem})
+  @assert dim(S) == 2
+  c = chern_numbers(S)
+  hilb_surface(n, c[Partition([1,1])], c[Partition([2])])
 end
 
 @doc Markdown.doc"""
@@ -162,12 +176,15 @@ function hilb_K3(n)
 end
 
 # the generating series H(S) for a surface S
-function _H(n::Int, c1_2::Int, c2::Int)
-  a1, a2 = Nemo.solve(Nemo.matrix(QQ, [9 3; 8 4]'), Nemo.matrix(QQ, [c1_2 c2]'))
-  S, (z,) = Nemo.PolynomialRing(Omega, ["z"])
+function _H(n::Int, c₁²::T, c₂::U) where {T <: RingElement, U <: RingElement}
+  F = parent(c₁² + c₂)
+  if F isa AbstractAlgebra.Integers F = QQ end
+  a1, a2 = Nemo.solve(Nemo.matrix(F, [9 3; 8 4]'), Nemo.matrix(F, [c₁² c₂]'))
+  O = cobordism_ring(base=F)
+  S, (z,) = Nemo.PolynomialRing(O, ["z"])
   R = ChRing(S, [1], :variety_dim => n)
-  HP2    = a1 == 0 ? R() : 1 + R(sum(Omega(hilb_P2(k))*z^k for k in 1:n))
-  HP1xP1 = a2 == 0 ? R() : 1 + R(sum(Omega(hilb_P1xP1(k))*z^k for k in 1:n))
+  HP2    = a1 == 0 ? R() : 1 + R(sum(O(hilb_P2(k))*z^k for k in 1:n))
+  HP1xP1 = a2 == 0 ? R() : 1 + R(sum(O(hilb_P1xP1(k))*z^k for k in 1:n))
   _expp(a1*_logg(HP2) + a2*_logg(HP1xP1))
 end
 
@@ -215,10 +232,10 @@ end
 
 @doc Markdown.doc"""
     milnor(X::Variety)
-Compute the Milnor number $n! \int_X\mathrm{ch}_n(T_X)$ of a variety $X$.
+Compute the Milnor number $\int_X\mathrm{ch}_n(T_X)$ of a variety $X$.
 """
-milnor(X::Variety) = factorial(ZZ(dim(X))) * integral(ch(X.T))
-milnor(x::CobordRingElem) = factorial(ZZ(dim(x))) * integral(x, ch(variety(dim(x)).T))
+milnor(X::Variety) = integral(ch(X.T))
+milnor(x::CobordRingElem) = integral(x, ch(variety(dim(x)).T))
 
 function OG6()
   Omega(

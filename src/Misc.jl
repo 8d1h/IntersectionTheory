@@ -39,6 +39,8 @@ function _parse_base(base::Ring, param::Union{String, Vector{String}})
   return base, p
 end
 
+parameters(param::String...) = FunctionField(Singular.QQ, collect(param))[2]
+
 ###############################################################################
 #
 # coercions
@@ -58,6 +60,8 @@ end
   F(cst_num)//F(cst_denom)
 end
 (F::Nemo.FlintRationalField)(x::Singular.n_transExt) = F(Singular.QQ(x))
+promote_rule(::Type{n_transExt}, ::Type{n_Q}) = Singular.n_transExt
+promote_rule(::Type{n_transExt}, ::Type{fmpq}) = Singular.n_transExt
 
 ###############################################################################
 #
@@ -80,42 +84,97 @@ Base.show(io::IO, mi::MIME"text/html", x::T) where T <: RingElem =
 Base.show(io::IO, mi::MIME"text/html", x::T) where T <: Nemo.MatElem =
   print(io, "\$\\left[" * AbstractAlgebra.obj_to_latex_string(x) * "\\right]\$")
 
-# taken from Hecke
-function Base.show(io::IO, mime::MIME"text/html", T::Tuple)
-  print(io, "(")
-  for i in 1:length(T)
-    try
-      show(IOContext(io, :compact => true), mime, T[i])
-    catch e
-      if isa(e, MethodError)
-        show(IOContext(io, :compact => true), T[i])
-      else
-        rethrow(e)
-      end
-    end
-    if i<length(T)
-      print(io, ", ")
+function _show_compact(io::IO, mi::MIME"text/html", x)
+  try
+    show(IOContext(io, :compact => true), mi, x)
+  catch e
+    if isa(e, MethodError)
+      print(io, "<tt>")
+      show(IOContext(io, :compact => true), x)
+      print(io, "</tt>")
+    else
+      rethrow(e)
     end
   end
-  print(io, ")")
+end
+function Base.show(io::IO, mi::MIME"text/html", P::Pair)
+  if isdefined(Main, :IJulia) && Main.IJulia.inited
+    _show_compact(io, mi, P[1])
+    print(io, " \$\\Rightarrow\$ ")
+    _show_compact(io, mi, P[2])
+  else
+    show(io, P) 
+  end
+end
+function Base.show(io::IO, mi::MIME"text/html", T::Tuple)
+  if isdefined(Main, :IJulia) && Main.IJulia.inited
+    print(io, "(")
+    sep = false
+    for x in T
+      if !sep
+	sep = true
+      else
+	print(io, ", ")
+      end
+      _show_compact(io, mi, x)
+    end
+    print(io, ")")
+  else
+    show(io, T) 
+  end
 end
 function Base.show(io::IO, mi::MIME"text/html", V::Vector)
-  space = "&nbsp;&nbsp;"
-  if (:compact => true) in io
-    print(io, "[")
-  else
-    print(io, "<pre>$(length(V))-element $(typeof(V)):</pre>$space")
-  end
-  sep = false
-  for x in V
-    if !sep
-      sep = true
+  if isdefined(Main, :IJulia) && Main.IJulia.inited
+    space = "&nbsp;&nbsp;"
+    if (:compact => true) in io
+      print(io, "[")
     else
-      print(io, (:compact => true) in io ? ",$space" : "<br>$space")
+      print(io, "<pre>$(length(V))-element $(typeof(V)):</pre>$space")
     end
-    Base.show(IOContext(io, :compact => true), mi, x)
+    sep = false
+    for x in V
+      if !sep
+	sep = true
+      else
+	print(io, (:compact => true) in io ? ",$space" : "<br>$space")
+      end
+      _show_compact(io, mi, x)
+    end
+    if (:compact => true) in io
+      print(io, "]")
+    end
+  else
+    show(io, V) 
   end
-  if (:compact => true) in io
-    print(io, "]")
+end
+function Base.show(io::IO, mi::MIME"text/html", D::Dict)
+  if isdefined(Main, :IJulia) && Main.IJulia.inited
+    space = "&nbsp;&nbsp;"
+    if (:compact => true) in io
+      print(io, "{")
+    else
+      print(io, "<pre>$(typeof(D))")
+      if length(D) > 1
+	print(io, " with $(length(D)) entries:</pre>$space")
+      elseif length(D) == 1
+	print(io, " with 1 entry:</pre>$space")
+      else
+	print(io, "()</pre>")
+      end
+    end
+    sep = false
+    for k in sort(collect(keys(D)))
+      if !sep
+	sep = true
+      else
+	print(io, (:compact => true) in io ? ",$space" : "<br>$space")
+      end
+      _show_compact(io, mi, k => D[k])
+    end
+    if (:compact => true) in io
+      print(io, "}")
+    end
+  else
+    show(io, D) 
   end
 end

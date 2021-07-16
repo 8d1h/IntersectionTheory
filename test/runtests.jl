@@ -406,4 +406,17 @@ end
   @test hilb_K3(1) == Omega(K3)
   @test generalized_kummer(1) == Omega(K3)
 
+  a, b = parameters("a", "b")
+  @test a isa Singular.n_transExt
+  F = parent(a)
+  @test F isa Singular.N_FField
+  O = cobordism_ring(base = F)
+  x = cobordism_class(proj(1), base = F)
+  @test parent(x) === O
+  @test x == O[1]
+  @test a * x + b == a * O[1] + O(b)
+  y = hilb_surface(1, a, b)
+  @test parent(y) == O
+  @test integral(y, universal_genus(2, k->O[k])) == y
+
 end
