@@ -60,6 +60,7 @@ end
   F(cst_num)//F(cst_denom)
 end
 (F::Nemo.FlintRationalField)(x::Singular.n_transExt) = F(Singular.QQ(x))
+(F::Nemo.FmpqMPolyRing)(q::Singular.n_Q) = F(QQ(q))
 promote_rule(::Type{n_transExt}, ::Type{n_Q}) = Singular.n_transExt
 promote_rule(::Type{n_transExt}, ::Type{fmpq}) = Singular.n_transExt
 

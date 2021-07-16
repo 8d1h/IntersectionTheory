@@ -119,6 +119,8 @@ function integral(x::CobordRingElem, t::ChRingElem)
 end
 
 todd(x::CobordRingElem) = integral(x, todd(dim(x)))
+signature(x::CobordRingElem) = integral(x, signature(variety(dim(x))))
+a_hat_genus(x::CobordRingElem) = integral(x, a_hat_genus(variety(dim(x))))
 
 function _chern_Pn(n::Int)
   B = get_special(Omega, :basis)

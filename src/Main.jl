@@ -496,10 +496,6 @@ for g in [:a_hat_genus, :l_genus]
     p = pontryagin(X.T)[1:2k]
     R($g(k)[k].f([p[2i].f for i in 1:k]...))
   end
-  @eval function $g(X::AbsVariety)
-    !iseven(X.dim) && error("the variety is not of even dimension")
-    integral($g(X.dim÷2, X))
-  end
 end
 
 @doc Markdown.doc"""
@@ -515,12 +511,18 @@ l_genus(k::Int, X::AbsVariety)
 @doc Markdown.doc"""
     a_hat_genus(X::AbsVariety)
 Compute the top $\hat A$ genus of a variety $X$ of even dimension."""
-a_hat_genus(X::AbsVariety)
+function a_hat_genus(X::AbsVariety)
+  !iseven(X.dim) && error("the variety is not of even dimension")
+  integral(todd(X) * _expp(-1//2 * chern(1, X)))
+end
 
 @doc Markdown.doc"""
     l_genus(X::AbsVariety)
 Compute the top L genus of a variety $X$ of even dimension."""
-l_genus(X::AbsVariety)
+function l_genus(X::AbsVariety)
+  !iseven(X.dim) && error("the variety is not of even dimension")
+  integral(l_genus(X.dim÷2, X))
+end
 
 @doc Markdown.doc"""
     signature(X::AbsVariety)

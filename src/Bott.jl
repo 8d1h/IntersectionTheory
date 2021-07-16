@@ -152,6 +152,8 @@ chern(F::TnBundle, x::MPolyElem) = begin
 end
 ch(F::TnBundle) = chern(F, F.rank + _logg(chern(F).c).f)
 todd(X::TnVariety) = chern(X.T, todd(dim(X))[dim(X)].f)
+signature(X::TnVariety) = integral(chern(X.T, signature(variety(dim(X))).f))
+a_hat_genus(X::TnVariety) = integral(chern(X.T, a_hat_genus(variety(dim(X))).f))
 
 # compute multiple integrals simultaneously to avoid redundant computations
 # used in `chern_numbers` for example
