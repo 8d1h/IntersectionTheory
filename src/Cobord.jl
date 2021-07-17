@@ -57,7 +57,7 @@ function (R::CobordRing)(c::Dict{T, U}) where {T <: Partition, U <: RingElement}
   @assert all(x -> sum(x) == n, P)
   R[n]
   p = gens(R.R)[1:n]
-  v = _to_Pn(n, c)
+  v = _to_prod_Pn(n, c)
   R(sum(v[i] * prod(p[d] for d in λ) for (i, λ) in enumerate(partitions(n))))
 end
 
@@ -97,13 +97,17 @@ function chern_numbers(x::CobordRingElem, P::Vector{<:Partition}=partitions(dim(
   d = dim(x)
   Pd = partitions(d)
   f = λ -> (ans = repeat([0], x.n); for i in λ if i <= x.n ans[i] += 1 end end; ans)
-  c = Nemo.change_base_ring(parent(x).base, _chern_Pn(d)[[i for (i, λ) in enumerate(Pd) if λ in P], :]) * Nemo.matrix(parent(x).base, [coeff(x.f, f(λ)) for λ in Pd][:, :])
+  c = Nemo.change_base_ring(parent(x).base, _chern_numbers_of_prod_Pn(d)[[i for (i, λ) in enumerate(Pd) if λ in P], :]) * Nemo.matrix(parent(x).base, [coeff(x.f, f(λ)) for λ in Pd][:, :])
   Dict([λ => c[i] for (i, λ) in enumerate(P) if !nonzero || c[i] != 0])
 end
 
 function euler(x::CobordRingElem)
   p = Partition([dim(x)])
   chern_numbers(x, [p])[p]
+end
+
+function _exp_to_partition(v::Vector)
+  Partition(vcat([repeat([n], v[n]) for n in length(v):-1:1]...))
 end
 
 @doc Markdown.doc"""
@@ -114,41 +118,96 @@ cobordism class.
 function integral(x::CobordRingElem, t::ChRingElem)
   t = t[dim(x)]
   c = chern_numbers(x)
-  f = v -> Partition(vcat([repeat([n], v[n]) for n in length(v):-1:1]...))
-  ans = sum(c[f(v)] * (a isa n_Q ? QQ(a) : a) for (a, v) in zip(Nemo.coefficients(t.f), Nemo.exponent_vectors(t.f)) if a != 0)
+  ans = sum(c[_exp_to_partition(v)] * (a isa n_Q ? QQ(a) : a) for (a, v) in zip(Nemo.coefficients(t.f), Nemo.exponent_vectors(t.f)))
 end
 
 todd(x::CobordRingElem) = integral(x, todd(dim(x)))
 signature(x::CobordRingElem) = integral(x, signature(variety(dim(x))))
 a_hat_genus(x::CobordRingElem) = integral(x, a_hat_genus(variety(dim(x))))
 
-function _chern_Pn(n::Int)
-  B = get_special(Omega, :basis)
+function _generic_variety(n::Int)
+  cache = get_special(Omega, :generic_variety)
+  if cache == nothing
+    cache = Dict{Int, AbsVariety}()
+    set_special(Omega, :generic_variety => cache)
+  end
+  if !(n in keys(cache))
+    X = variety(n)
+    cache[n] = X
+  end
+  cache[n]
+end
+function _generic_product_chern_numbers(m::Int, n::Int)
+  cache = get_special(Omega, :generic_product_chern_numbers)
+  if cache == nothing
+    cache = Dict{Tuple{Int, Int}, Dict{Partition, Dict{Tuple{Partition, Partition}, Any}}}()
+    set_special(Omega, :generic_product_chern_numbers => cache)
+  end
+  mn = Tuple([m,n])
+  if !(mn in keys(cache))
+    X = _generic_variety(m)
+    Y = _generic_variety(n)
+    c = chern_numbers(X * Y)
+    ans = typeof(cache).parameters[2]()
+    for k in keys(c)
+      ansk = typeof(ans).parameters[2]()
+      for (a, v) in zip(Nemo.coefficients(c[k].f), Nemo.exponent_vectors(c[k].f))
+	p = _exp_to_partition(v[1:m])
+	if sum(p) == m
+	  q = _exp_to_partition(v[m+1:end])
+	  ansk[Tuple([p,q])] = (a isa n_Q ? QQ(a) : a)
+	end
+      end
+      ans[k] = ansk
+    end
+    cache[mn] = ans
+  end
+  cache[mn]
+end
+# no testing if the inputs are valid, for internal use only
+function _product_chern_numbers(x::Dict{<:Partition, U}, y::Dict{<:Partition, V}) where {U, V}
+  m = sum(collect(keys(x))[1])
+  n = sum(collect(keys(y))[1])
+  c = _generic_product_chern_numbers(m, n)
+  ans = Dict{Partition, Any}()
+  for k in keys(c)
+    ans[k] = sum(c[k][pq] * x[pq[1]] * y[pq[2]] for pq in keys(c[k]))
+  end
+  ans
+end
+
+function chern_numbers_of_product(Xs::Vector{<:Variety})
+  length(Xs) == 1 && return chern_numbers(Xs[1])
+  _product_chern_numbers(chern_numbers(Xs[1]), chern_numbers_of_product(Xs[2:end]))
+end
+
+function _chern_numbers_of_prod_Pn(n::Int)
+  B = get_special(Omega, :chern_numbers_of_prod_Pn)
   if B == nothing
     B = Dict{Int, Nemo.fmpq_mat}()
-    set_special(Omega, :basis => B)
+    set_special(Omega, :chern_numbers_of_prod_Pn => B)
   end
   if !(n in keys(B))
     P = partitions(n)
     Pn = [proj(k) for k in 1:n]
     c = Dict{Partition, Dict{Partition, fmpq}}()
     for λ in P
-      c[λ] = chern_numbers(prod(Pn[d] for d in λ))
+      c[λ] = chern_numbers_of_product([Pn[d] for d in λ])
     end
     B[n] = Nemo.matrix(QQ, [c[μ][λ] for λ in P, μ in P])
   end
   B[n]
 end
 
-function _to_Pn(X::Variety)
-  _to_Pn(dim(X), chern_numbers(X))
+function _to_prod_Pn(X::Variety)
+  _to_prod_Pn(dim(X), chern_numbers(X))
 end
 
-function _to_Pn(n::Int, c::Dict{T, U}) where {T <: Partition, U <: RingElement}
+function _to_prod_Pn(n::Int, c::Dict{T, U}) where {T <: Partition, U <: RingElement}
   F = parent(sum(values(c)))
   if F isa AbstractAlgebra.Integers F = QQ end
   c = [λ in keys(c) ? c[λ] : F(0) for λ in partitions(n), j in 1:1]
-  vec(collect(Nemo.solve(Nemo.change_base_ring(F, _chern_Pn(n)), Nemo.matrix(F, c))))
+  vec(collect(Nemo.solve(Nemo.change_base_ring(F, _chern_numbers_of_prod_Pn(n)), Nemo.matrix(F, c))))
 end
 
 # Ellingsrud-Göttsche-Lehn

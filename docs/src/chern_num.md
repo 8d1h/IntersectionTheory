@@ -157,7 +157,7 @@ hilb_K3(2)
 chern_numbers(hilb_K3(2), nonzero=true)
 integral(hilb_K3(2), sqrt(todd(4)))
 ```
-We record the Chern numbers of $\mathrm{K3}^{[n]}$ with $n\in\{5,6,7\}$, since
+We record the Chern numbers of $\mathrm{K3}^{[n]}$ with $n\in\{5,6,7,8\}$, since
 these are not found in the literature.
 ```julia-repl
 julia> chern_numbers(hilb_K3(5), nonzero=true)
@@ -201,6 +201,31 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 15 entries:
   12₁2₁  => 102477312
   8₁2₃   => 12357114624
   14₁    => 5930496
+
+julia> chern_numbers(hilb_K3(8), nonzero=true)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 22 entries:
+  10₁2₃   => 133823975040
+  8₁2₄    => 1205400258720
+  4₂2₄    => 13094639681760
+  8₁4₂    => 225987046020
+  2₈      => 70277256403200
+  14₁2₁   => 649511820
+  4₁2₆    => 30327407026560
+  8₂      => 21049285275
+  6₁2₅    => 7517275416000
+  8₁6₁2₁  => 130128762960
+  10₁4₁2₁ => 58033047240
+  6₁4₂2₁  => 1405173296520
+  6₂4₁    => 349760996280
+  12₁4₁   => 4678568010
+  12₁2₂   => 10767198960
+  16₁     => 30178575
+  4₄      => 2445207931980
+  8₁4₁2₂  => 521787430080
+  6₁4₁2₃  => 3249219677760
+  6₂2₂    => 807925003200
+  10₁6₁   => 14525621460
+  4₃2₂    => 5657019716880
 ```
 ## Chern numbers of the generalized Kummer varieties
 By results of Nieper-Wißkirchen, the cobordism classes of generalized Kummer
