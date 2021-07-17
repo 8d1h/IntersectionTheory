@@ -82,12 +82,12 @@ ctop(F::AbsBundle) = chern(F.rank, F)
 @doc Markdown.doc"""
     segre(F::AbsBundle)
 Compute the total Segre class."""
-segre(F::AbsBundle) = inv(chern(F))
+segre(F::AbsBundle) = chern(-F)
 
 @doc Markdown.doc"""
     segre(k::Int, F::AbsBundle)
 Compute the $k$-th Segre class."""
-segre(k::Int, F::AbsBundle) = segre(F)[k]
+segre(k::Int, F::AbsBundle) = chern(k, -F)
 
 @doc Markdown.doc"""
     todd(F::AbsBundle)
