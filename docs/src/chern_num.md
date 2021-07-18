@@ -157,8 +157,11 @@ hilb_K3(2)
 chern_numbers(hilb_K3(2), nonzero=true)
 integral(hilb_K3(2), sqrt(todd(4)))
 ```
-We record the Chern numbers of $\mathrm{K3}^{[n]}$ with $n\in\{5,6,7,8\}$, since
-these are not found in the literature.
+We record the following Chern numbers, since these are not found in the
+literature (click to expand).
+```@raw html
+<details><summary>$\mathrm{K3}^{[5]}$</summary>
+```
 ```julia-repl
 julia> chern_numbers(hilb_K3(5), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 7 entries:
@@ -169,7 +172,12 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 7 entries:
   4₁2₃ => 52697088
   2₅   => 126867456
   4₂2₁ => 21921408
-
+```
+```@raw html
+</details><br>
+<details><summary>$\mathrm{K3}^{[6]}$</summary>
+```
+```julia-repl
 julia> chern_numbers(hilb_K3(6), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 11 entries:
   6₁4₁2₁ => 392090040
@@ -183,7 +191,12 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 11 entries:
   4₁2₄   => 3910848640
   4₂2₂   => 1650311720
   6₂     => 93495320
-
+```
+```@raw html
+</details><br>
+<details><summary>$\mathrm{K3}^{[7]}$</summary>
+```
+```julia-repl
 julia> chern_numbers(hilb_K3(7), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 15 entries:
   8₁6₁   => 1296158976
@@ -201,7 +214,12 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 15 entries:
   12₁2₁  => 102477312
   8₁2₃   => 12357114624
   14₁    => 5930496
-
+```
+```@raw html
+</details><br>
+<details><summary>$\mathrm{K3}^{[8]}$</summary>
+```
+```julia-repl
 julia> chern_numbers(hilb_K3(8), nonzero=true)
 Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 22 entries:
   10₁2₃   => 133823975040
@@ -226,6 +244,97 @@ Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 22 entries:
   6₂2₂    => 807925003200
   10₁6₁   => 14525621460
   4₃2₂    => 5657019716880
+```
+```@raw html
+</details><br>
+<details><summary>$\mathrm{K3}^{[9]}$</summary>
+```
+```julia-repl
+julia> chern_numbers(hilb_K3(9), nonzero=true)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 30 entries:
+  8₁4₂2₁  => 24530800855040
+  6₁4₂2₂  => 148696308725760
+  10₁2₄   => 14747557928960
+  6₁4₁2₄  => 340787113328640
+  8₂2₁    => 2360786818560
+  14₁4₁   => 33938470560
+  14₁2₂   => 77346804480
+  16₁2₁   => 3748665600
+  10₁4₂   => 2821199089280
+  10₁8₁   => 273089658720
+  6₁2₆    => 781347805921280
+  6₃      => 9553579524480
+  2₉      => 7105044485242880
+  8₁4₁2₃  => 56155350159360
+  4₁2₇    => 3095054052884480
+  8₁6₁4₁  => 6227441933120
+  18₁     => 143184000
+  6₂4₁2₁  => 37660572692480
+  4₄2₁    => 256482451425280
+  12₁4₁2₁ => 539392972800
+  6₁4₃    => 64907421320960
+  12₁6₁   => 137685310240
+  4₃2₃    => 588050734243840
+  8₁2₅    => 128601459097600
+  12₁2₃   => 1231467509760
+  6₂2₃    => 86242390425600
+  10₁6₁2₁ => 1640647441920
+  4₂2₅    => 1348811566120960
+  8₁6₁2₂  => 14244457018880
+  10₁4₁2₂ => 6448976952320
+```
+```@raw html
+</details><br>
+<details><summary>$\mathrm{K3}^{[10]}$</summary>
+```
+```julia-repl
+julia> chern_numbers(hilb_K3(10), nonzero=true)
+Dict{AbstractAlgebra.Generic.Partition{Int64}, Nemo.fmpq} with 42 entries:
+  6₂2₄     => 9985643035208064
+  12₁6₁2₁  => 17364913158312
+  4₅       => 12856151785953456
+  2₁₀      => 784015765747670016
+  8₁6₂     => 191775038293488
+  6₁4₁2₅   => 38843392796682624
+  6₃2₁     => 1131809390142912
+  10₁2₅    => 1758703316056704
+  6₂4₁2₂   => 4394286954851616
+  12₁4₁2₂  => 67076166081096
+  8₁4₃     => 1269802518792480
+  12₁2₄    => 152045432439552
+  12₁4₂    => 29600340453792
+  4₁2₈     => 344349868718803968
+  12₁8₁    => 2965017020340
+  8₁6₁4₁2₁ => 743198906501136
+  4₂2₆     => 151292288348880768
+  4₄2₂     => 29232974793607632
+  20₁      => 639249300
+  6₁4₃2₁   => 7515004051819440
+  10₁6₁2₂  => 200033938656144
+  6₂4₂     => 1934365074963120
+  8₂4₁     => 126041828580756
+  10₁4₂2₁  => 341463574094256
+  14₁4₁2₁  => 4384872164952
+  16₁4₁    => 221782223484
+  16₁2₂    => 501196808844
+  14₁6₁    => 1138643559096
+  10₁8₁2₁  => 34013661979068
+  6₁4₂2₃   => 17082588734970336
+  6₁2₇     => 88352799453985536
+  4₃2₄     => 66492814703915520
+  8₁6₁2₃   => 1687307749020288
+  10₁4₁2₃  => 774819641550240
+  10₂      => 4065174516348
+  8₁4₁2₄   => 6551210934127872
+  8₁4₂2₂   => 2883767951787984
+  18₁2₁    => 19976926140
+  10₁6₁4₁  => 88209449234208
+  8₂2₂     => 285897881921148
+  14₁2₃    => 9924722506512
+  8₁2₆     => 14887462352860800
+```
+```@raw html
+</details>
 ```
 ## Chern numbers of the generalized Kummer varieties
 By results of Nieper-Wißkirchen, the cobordism classes of generalized Kummer
