@@ -13,7 +13,6 @@ using IntersectionTheory
 degree
 euler
 hilbert_polynomial
-signature
 milnor
 ```
 ### Examples
@@ -21,7 +20,6 @@ milnor
 degree(grassmannian(2, 4))
 euler(grassmannian(2, 4))
 hilbert_polynomial(proj(3))
-signature(complete_intersection(proj(3), 4)) # signature of a K3 surface
 ```
 ## Characteristic classes
 By common abuse of notations, the Chern/Todd/... class of a variety will mean
@@ -36,8 +34,8 @@ pontryagin(X::AbsVariety)
 pontryagin(k::Int, X::AbsVariety)
 a_hat_genus(X::AbsVariety)
 a_hat_genus(k::Int, X::AbsVariety)
-l_genus(X::AbsVariety)
 l_genus(k::Int, X::AbsVariety)
+signature
 ```
 We also have the following functions for producing generic formulae.
 ```@docs
@@ -52,8 +50,9 @@ todd(proj(2))
 pontryagin(proj(2))
 chern_number(proj(3), [2,1])
 chern_numbers(proj(3))
-l_genus(proj(2))
 a_hat_genus(proj(2))
+signature(proj(2))
+signature(complete_intersection(proj(3), 4)) # signature of a K3 surface
 ```
 ```@repl repl
 todd(2)

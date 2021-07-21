@@ -510,24 +510,18 @@ l_genus(k::Int, X::AbsVariety)
 
 @doc Markdown.doc"""
     a_hat_genus(X::AbsVariety)
-Compute the top $\hat A$ genus of a variety $X$ of even dimension."""
+Compute the $\hat A$ genus of a variety $X$."""
 function a_hat_genus(X::AbsVariety)
-  !iseven(X.dim) && error("the variety is not of even dimension")
   integral(todd(X) * _expp(-1//2 * chern(1, X)))
 end
 
 @doc Markdown.doc"""
-    l_genus(X::AbsVariety)
-Compute the top L genus of a variety $X$ of even dimension."""
-function l_genus(X::AbsVariety)
-  !iseven(X.dim) && error("the variety is not of even dimension")
-  integral(l_genus(X.dim÷2, X))
-end
-
-@doc Markdown.doc"""
     signature(X::AbsVariety)
-Compute the signature of a variety $X$ of even dimension."""
-signature(X::AbsVariety) = l_genus(X) # Hirzebruch signature theorem
+Compute the signature of a variety $X$."""
+function signature(X::AbsVariety)
+  iseven(dim(X)) || return integral(X(0))
+  integral(l_genus(dim(X)÷2, X)) # Hirzebruch signature theorem
+end
 
 @doc Markdown.doc"""
     hilbert_polynomial(F::AbsBundle)
