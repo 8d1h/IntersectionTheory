@@ -461,15 +461,13 @@ libgober_wood_polynomial(n::Int) = libgober_wood_polynomial(variety(n))
 
 @doc Markdown.doc"""
     chern_number(X::Variety, λ::Int...)
-    chern_number(X::Variety, λ::Vector{Int})
-    chern_number(X::Variety, λ::Partition)
+    chern_number(X::Variety, λ::AbstractVector)
 Compute the Chern number $c_\lambda (X):=\int_X c_{\lambda_1}(X)\cdots
 c_{\lambda_k}(X)$, where $\lambda:=(\lambda_1,\dots,\lambda_k)$ is a partition
 of the dimension of $X$.
 """
 chern_number(X::Variety, λ::Int...) = chern_number(X, collect(λ))
-chern_number(X::Variety, λ::Partition) = chern_number(X, collect(λ))
-function chern_number(X::AbsVariety, λ::Vector{Int})
+function chern_number(X::AbsVariety, λ::AbstractVector{Int})
   sum(λ) == dim(X) || error("not a partition of the dimension")
   c = chern(X)[1:dim(X)]
   integral(prod([c[i] for i in λ]))
@@ -483,10 +481,11 @@ c_\lambda(X)$, or only those corresponding to partitions in a given vector.
 """
 chern_numbers(X::Variety)
 
-function chern_numbers(X::AbsVariety, P::Vector{<:Partition}=partitions(dim(X)))
+function chern_numbers(X::AbsVariety, P::Vector{<:Partition}=partitions(dim(X)); nonzero::Bool=false)
   all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
   c = chern(X)[1:dim(X)]
-  Dict([λ => integral(prod([c[i] for i in λ])) for λ in P])
+  ans = [λ => integral(prod([c[i] for i in λ])) for λ in P]
+  !nonzero ? (return Dict(ans)) : return Dict(filter(p -> p[2] != 0, ans))
 end
 
 for g in [:a_hat_genus, :l_genus]
@@ -727,13 +726,11 @@ function symmetric_power(k::RingElement, F::AbsBundle)
 end
 
 @doc Markdown.doc"""
-    schur_functor(λ::Vector{Int}, F::AbsBundle)
-    schur_functor(λ::Partition, F::AbsBundle)
+    schur_functor(λ::AbstractVector, F::AbsBundle)
 Return the result of the Schur functor $\mathbf S^\lambda$.
 """
-function schur_functor(λ::Vector{Int}, F::AbsBundle) schur_functor(Partition(λ), F) end
-function schur_functor(λ::Partition, F::AbsBundle)
-  λ = conj(λ)
+function schur_functor(λ::AbstractVector{Int}, F::AbsBundle)
+  λ = conj(Partition(λ[:]))
   X = F.parent
   w = _wedge(sum(λ), ch(F))
   S, ei = PolynomialRing(Singular.QQ, ["e$i" for i in 1:length(w)])
@@ -743,7 +740,7 @@ function schur_functor(λ::Partition, F::AbsBundle)
   StoX = Singular.AlgebraHomomorphism(S, X.ring.R, [wi.f for wi in w])
   AbsBundle(X, X(StoX(sch)))
 end
-function giambelli(λ::Vector{Int}, F::AbsBundle)
+function giambelli(λ::AbstractVector{Int}, F::AbsBundle)
   R = F.parent.ring
   M = [chern(λ[i]-i+j, F).f for i in 1:length(λ), j in 1:length(λ)]
   R(det(Nemo.matrix(R.R, M)))
@@ -1309,13 +1306,11 @@ end
 
 @doc Markdown.doc"""
     schubert_class(G::AbsVariety, λ::Int...)
-    schubert_class(G::AbsVariety, λ::Vector{Int})
-    schubert_class(G::AbsVariety, λ::Partition)
+    schubert_class(G::AbsVariety, λ::AbstractVector)
 Return the Schubert class $\sigma_\lambda$ on a (relative) Grassmannian $G$.
 """
 function schubert_class(G::AbsVariety, λ::Int...) schubert_class(G, collect(λ)) end
-function schubert_class(G::AbsVariety, λ::Partition) schubert_class(G, collect(λ)) end
-function schubert_class(G::AbsVariety, λ::Vector{Int})
+function schubert_class(G::AbsVariety, λ::AbstractVector{Int})
   get_special(G, :grassmannian) === nothing && error("the variety is not a Grassmannian")
   (length(λ) > rank(G.bundles[1]) || sort(λ, rev=true) != λ) && error("the Schubert input is not well-formed")
   giambelli(λ, G.bundles[2])

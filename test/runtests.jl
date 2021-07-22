@@ -201,30 +201,12 @@ end
   @test schubert_class(G, Nemo.Partition([2, 1])) == -c1^3 + c1 * c2
   @test [length(schubert_classes(i, G)) for i in 0:4] == [1,1,2,1,1]
 
-  # Grassmannian: TnVariety version
-  G = grassmannian(2, 4, bott=true)
-  S, Q = bundles(G)
-  @test G isa IntersectionTheory.TnVariety
-  @test S isa IntersectionTheory.TnBundle
-  @test rank(tangent_bundle(G)) == 4
-  @test euler(G) == 6
-  @test integral(chern(symmetric_power(3, dual(S)))) == 27
-  @test integral(chern(1, dual(S))^4) == 2
-  @test integral(chern(2, G)^2) == 98
-
   # flag variety
   F = flag(1, 2, 3)
   A, B, C = bundles(F)
   @test dim(F) == 3
   @test rank.(bundles(F)) == [1, 1, 1]
   @test betti(F) == [1,2,2,1]
-  @test euler(F) == 6
-
-  # flag variety: TnVariety version
-  F = flag(1, 2, 3, bott=true)
-  A, B, C = bundles(F)
-  @test dim(F) == 3
-  @test rank.(bundles(F)) == [1, 1, 1]
   @test euler(F) == 6
 
   # projective bundle
@@ -250,6 +232,39 @@ end
   @test pushforward(p, p.O1^4) == 2
   @test [length(schubert_classes(i, FlF)) for i in 0:4] == [1,1,2,1,1]
 
+end
+
+@testset "TnVariety" begin
+
+  # Grassmannian
+  G = grassmannian(2, 4, bott=true)
+  S, Q = bundles(G)
+  @test G isa IntersectionTheory.TnVariety
+  @test S isa IntersectionTheory.TnBundle
+  @test rank(tangent_bundle(G)) == 4
+  @test euler(G) == 6
+  @test integral(chern(symmetric_power(3, dual(S)))) == 27
+  @test integral(chern(1, dual(S))^4) == 2
+  @test integral(chern(2, G)^2) == 98
+  
+  # polynomial weights
+  G = grassmannian(2, 4, bott=true, weights=:poly)
+  S, Q = bundles(G)
+  @test integral(chern(symmetric_power(3, dual(S)))) == 27
+
+  # flag variety
+  F = flag(1, 2, 3, bott=true)
+  A, B, C = bundles(F)
+  @test dim(F) == 3
+  @test rank.(bundles(F)) == [1, 1, 1]
+  @test euler(F) == 6
+
+  # product
+  P = grassmannian(1, 2, bott=true)
+  PxP = P*P
+  @test PxP isa IntersectionTheory.TnVariety
+  @test chern_numbers(PxP) == Dict([Nemo.Partition([2]) => 4, Nemo.Partition([1,1]) => 8])
+ 
 end
 
 @testset "Pushfwd" begin

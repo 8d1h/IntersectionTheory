@@ -17,10 +17,35 @@ function partitions(n::Int, k::Int=n, m::Int=-1)
   ans
 end
 
-# make combinations work for arrays
-function combinations(I::UnitRange, k::Int) combinations(collect(I), k) end
-function combinations(l::Vector, k::Int)
-  [[l[i] for i in c] for c in combinations(length(l), k)]
+# XXX remove once in AA
+function combinations(n::Int, k::Int) combinations(1:n, k) end
+function combinations(v::AbstractVector{T}, k::Int) where T
+  n = length(v)
+  ans = Vector{T}[]
+  _combinations_dfs!(ans, Vector{T}(undef, k), v, n, k)
+  return ans
+end
+function _combinations_dfs!(ans::Vector{Vector{T}}, comb::Vector{T}, v::AbstractVector{T}, n::Int, k::Int) where T
+  k < 1 && (pushfirst!(ans, comb[:]); return)
+  for m in n:-1:k
+    comb[k] = v[m]
+    _combinations_dfs!(ans, comb, v, m - 1, k - 1)
+  end
+end
+
+function _sym(n::Int, k::Int) _sym(1:n, k) end
+function _sym(v::AbstractVector{T}, k::Int) where T
+  n = length(v)
+  ans = Vector{T}[]
+  _sym_dfs!(ans, Vector{T}(undef, k), v, n, k)
+  return ans
+end
+function _sym_dfs!(ans::Vector{Vector{T}}, comb::Vector{T}, v::AbstractVector{T}, n::Int, k::Int) where T
+  k < 1 && (pushfirst!(ans, comb[:]); return)
+  for m in n:-1:1
+    comb[k] = v[m]
+    _sym_dfs!(ans, comb, v, m, k - 1)
+  end
 end
 
 # construct appropriate base field
@@ -61,6 +86,11 @@ end
 end
 (F::Nemo.FlintRationalField)(x::Singular.n_transExt) = F(Singular.QQ(x))
 (F::Nemo.FmpqMPolyRing)(q::Singular.n_Q) = F(QQ(q))
+(F::Nemo.FlintRationalField)(x::Nemo.fmpq_mpoly) = begin
+  cst = constant_coefficient(x)
+  x == cst || throw(InexactError)
+  F(cst)
+end
 promote_rule(::Type{n_transExt}, ::Type{n_Q}) = Singular.n_transExt
 promote_rule(::Type{n_transExt}, ::Type{fmpq}) = Singular.n_transExt
 

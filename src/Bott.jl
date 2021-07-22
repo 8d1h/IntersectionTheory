@@ -12,7 +12,7 @@ struct TnRep
   w::Vector
   function TnRep(w::Vector{W}) where W
     # be sure to use fmpz to avoid overflow
-    W == Int && return new(length(w), ZZ.(w))
+    W <: Integer && return new(length(w), ZZ.(w))
     new(length(w), w)
   end
 end
@@ -21,12 +21,20 @@ dual(F::TnRep) = TnRep(-F.w)
 *(F::TnRep, G::TnRep) = TnRep([a+b for a in F.w for b in G.w])
 det(F::TnRep) = TnRep([sum(F.w)])
 ctop(F::TnRep) = prod(F.w)
-function chern(n::Int, F::TnRep)
-  sum(prod(F.w[i] for i in c) for c in combinations(F.n, n))
+# chern(k::Int, F::TnRep) = sum(prod.(combinations(F.w, k)))
+function chern(k::Int, F::TnRep)
+  k == F.n && return prod(F.w)
+  _chern_dfs!(F.w, F.n, k)
 end
-function _sym(k::Int, n::Int)
-  k == 0 && return [Int[]]
-  vcat([[push!(c, i) for c in _sym(k-1,i)] for i in 1:n]...)
+# perform the enumeration manually: this can save some unnecessary allocation
+function _chern_dfs!(v::Vector, n::Int, k::Int, comb::Vector=typeof(v)(undef, k))
+  k < 1 && return prod(comb)
+  ans = zero(v[1])
+  for m in n:-1:k
+    comb[k] = v[m]
+    ans += _chern_dfs!(v, m - 1, k - 1, comb)
+  end
+  return ans
 end
 
 ###############################################################################
@@ -99,18 +107,13 @@ dual(F::TnBundle) = TnBundle(F.parent, F.rank, p -> dual(F.loc(p)))
 *(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank * G.rank, p -> F.loc(p) * G.loc(p))
 det(F::TnBundle) = TnBundle(F.parent, 1, p -> det(F.loc(p)))
 
-# avoid computing `_sym` for each F.loc(p)
 function symmetric_power(k::Int, F::TnBundle)
-  l = _sym(k, F.rank)
   TnBundle(F.parent, binomial(F.rank+k-1, k), p -> (
-    Fp = F.loc(p);
-    TnRep([sum(Fp.w[i] for i in c) for c in l])))
+    TnRep(sum.(_sym(F.loc(p).w, k)))))
 end
 function exterior_power(k::Int, F::TnBundle)
-  l = combinations(F.rank, k)
   TnBundle(F.parent, binomial(F.rank, k), p -> (
-    Fp = F.loc(p);
-    TnRep([sum(Fp.w[i] for i in c) for c in l])))
+    TnRep(sum.(combinations(F.loc(p).w, k)))))
 end
 
 # we want the same syntax `integral(chern(F))` as in Schubert calculus
@@ -127,6 +130,7 @@ end
 ^(a::TnBundleChern, n::Int) = TnBundleChern(a.F, a.c^n)
 *(a::TnBundleChern, n::RingElement) = TnBundleChern(a.F, a.c*n)
 *(n::RingElement, a::TnBundleChern) = TnBundleChern(a.F, n*a.c)
+Base.sqrt(a::TnBundleChern) = TnBundleChern(a.F, sqrt(a.c))
 Base.show(io::IO, c::TnBundleChern) = print(io, "Chern class $(c.c) of $(c.F)")
 
 # create a ring to hold the chern classes of F
@@ -151,7 +155,8 @@ chern(F::TnBundle, x::MPolyElem) = begin
   TnBundleChern(F, Nemo.evaluate(x, gens(R)))
 end
 ch(F::TnBundle) = chern(F, F.rank + _logg(chern(F).c).f)
-todd(X::TnVariety) = chern(X.T, todd(dim(X))[dim(X)].f)
+chi(p::Int, X::TnVariety) = integral(chern(X.T, chi(p, variety(dim(X))).f))
+todd(X::TnVariety) = chern(X.T, todd(dim(X)).f)
 signature(X::TnVariety) = integral(chern(X.T, signature(variety(dim(X))).f))
 a_hat_genus(X::TnVariety) = integral(chern(X.T, a_hat_genus(variety(dim(X))).f))
 
@@ -163,35 +168,46 @@ function _integral(cc::Vector{TnBundleChern})
   X = F.parent
   n, r = X.dim, length(gens(R))
   top = [c.c[n].f for c in cc]
-  exp_vec = sum(vcat(sum.(Singular.exponent_vectors.(top))))
+  exp_vec = sum(vcat(sum.(Nemo.exponent_vectors.(top))))
   idx = filter(i -> exp_vec[i] > 0, 1:r)
-  ans = repeat([QQ()], length(cc))
-  for (p,e) in X.points # Bott's formula
+  top = [[(a, _exp_to_partition(v)) for (a,v) in zip(Nemo.coefficients(t), Nemo.exponent_vectors(t))] for t in top]
+  ans = Vector{Any}[repeat([0], Threads.nthreads()) for _ in cc]
+  Threads.@threads for (p,e) in X.points # Bott's formula
     Fp = F.loc(p)
-    cherns = [i in idx ? chern(i, Fp) : QQ() for i in 1:r]
+    cherns = [i in idx ? chern(i, Fp) : 0 for i in 1:r]
     cT = ctop(X.T.loc(p))
     for i in 1:length(cc)
-      ans[i] += top[i](cherns...) * (1 // (e * cT))
+      if cT isa AbstractFloat
+	t = prod(typeof(cT)(convert(Rational{BigInt}, a)) * prod(cherns[k] for k in v) for (a,v) in top[i])
+	ans[i][Threads.threadid()] += t * 1 / (e * cT)
+      else
+	t = prod(a * prod(cherns[k] for k in v) for (a,v) in top[i])
+	ans[i][Threads.threadid()] += t * 1 // (e * cT)
+      end
     end
   end
-  ans
+  _round.(sum.(ans))
 end
+
+_round(x::AbstractFloat) = (n = round(x); @assert abs(n - x) < 1e-3; QQ(BigInt(n)))
+_round(x::fmpq) = x
+_round(x::AbstractAlgebra.Generic.Frac) = QQ(numerator(x)) // QQ(denominator(x))
 
 function integral(c::TnBundleChern)
   _integral([c])[1]
 end
 
-function chern_number(X::TnVariety, λ::Vector{Int})
+function chern_number(X::TnVariety, λ::AbstractVector{Int})
   sum(λ) == dim(X) || error("not a partition of the dimension")
   c = [chern(i, X) for i in 1:dim(X)]
   integral(prod([c[i] for i in λ]))
 end
 
-function chern_numbers(X::TnVariety, P::Vector{T}=partitions(dim(X))) where T <: Partition
+function chern_numbers(X::TnVariety, P::Vector{T}=partitions(dim(X)); nonzero::Bool=false) where T <: Partition
   all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
   c = [chern(i, X) for i in 1:dim(X)]
   ans = _integral([prod([c[i] for i in λ]) for λ in P])
-  Dict([λ => i for (λ, i) in zip(P, ans)])
+  Dict([λ => ci for (ci, λ) in zip(ans, P) if !nonzero || ci != 0])
 end
 
 ###############################################################################
@@ -200,8 +216,9 @@ end
 #
 # utility function that parses the weight specification
 function _parse_weight(n::Int, w)
-  w == :int && return ZZ.(collect(1:n))
-  w == :poly && return Nemo.PolynomialRing(QQ, ["u$i" for i in 1:n])[2]
+  w == :int   && return ZZ.(1:n)
+  w == :poly  && return Nemo.PolynomialRing(QQ, ["u$i" for i in 1:n])[2]
+  w == :float && return Float128.(1:n)
   if (w isa UnitRange) w = collect(w) end
   w isa Vector && length(w) == n && return w
   error("incorrect specification for weights")
@@ -255,24 +272,15 @@ function linear_subspaces_on_hypersurface(k::Int, d::Int; bott::Bool=true)
   integral(ctop(symmetric_power(d, dual(S))))
 end
 
-# Ellingsrud-Strømme
-# On the homology of the Hilbert scheme of points in the plane
-@doc Markdown.doc"""
-    hilb_P2(n::Int)
-Construct the Hilbert scheme of $n$ points on $\mathbf P^2$ as a `TnVariety`.
-"""
-function hilb_P2(n::Int; weights=[0,1,2+n])
-  parts = [[a-1, b-a-1, n+2-b] for (a,b) in combinations(n+2, 2)]
+function _hilb(n::Int, parts::Vector, w::Vector)
   points = [p=>1 for p in vcat([collect(Base.Iterators.product(partitions.(pp)...))[:] for pp in parts]...)]
   H = TnVariety(2n, points)
-  w = _parse_weight(3, weights)
   loc(p) = begin
-    ws = typeof(w[1])[]
-    for (i1,i2,i3) in [[1,2,3],[2,3,1],[3,1,2]]
-      λ, μ = w[i2]-w[i1], w[i3]-w[i1]
-      if length(p[i1]) > 0
-	b = conj(p[i1])
-	for (s,j) in enumerate(p[i1])
+    ws = typeof(w[1][2])[]
+    for (k,(λ,μ)) in enumerate(w)
+      if length(p[k]) > 0
+	b = conj(p[k])
+	for (s,j) in enumerate(p[k])
 	  for i in 1:j
 	    push!(ws, λ*(i-j-1) + μ*(b[i]-s))
 	    push!(ws, λ*(j-i)   + μ*(s-b[i]-1))
@@ -282,9 +290,23 @@ function hilb_P2(n::Int; weights=[0,1,2+n])
     end
     TnRep(ws)
   end
-  T = TnBundle(H, 2n, loc)
-  H.T = T
+  H.T = TnBundle(H, 2n, loc)
   return H
+end
+
+# Ellingsrud-Strømme
+# On the homology of the Hilbert scheme of points in the plane
+@doc Markdown.doc"""
+    hilb_P2(n::Int)
+Construct the Hilbert scheme of $n$ points on $\mathbf P^2$ as a `TnVariety`.
+"""
+function hilb_P2(n::Int; weights=:int)
+  parts = [[a-1, b-a-1, n+2-b] for (a,b) in combinations(n+2, 2)]
+  if weights == :int weights = [0,1,2+n] end
+  if weights == :float weights = Float128[0,1,2+n] end
+  w = _parse_weight(3, weights)
+  w = [(w[2]-w[1],w[3]-w[1]), (w[3]-w[2],w[1]-w[2]), (w[1]-w[3],w[2]-w[3])]
+  _hilb(n, parts, w)
 end
 
 @doc Markdown.doc"""
@@ -292,28 +314,11 @@ end
 Construct the Hilbert scheme of $n$ points on $\mathbf P^1\times\mathbf P^1$ as
 a `TnVariety`.
 """
-function hilb_P1xP1(n::Int; weights=[0,1,2,3+n])
+function hilb_P1xP1(n::Int; weights=:int)
   parts = [[a-1, b-a-1, c-b-1, n+3-c] for (a,b,c) in combinations(n+3, 3)]
-  points = [p=>1 for p in vcat([collect(Base.Iterators.product(partitions.(pp)...))[:] for pp in parts]...)]
-  H = TnVariety(2n, points)
+  if weights == :int weights = [0,1,2,3+n] end
+  if weights == :float weights = Float128[0,1,2,3+n] end
   w = _parse_weight(4, weights)
-  loc(p) = begin
-    ws = typeof(w[1])[]
-    for (i1,i2,i3) in [[1,1,2],[2,4,2],[3,1,3],[4,4,3]]
-      λ, μ = w[i2]-w[5-i2], w[i3]-w[5-i3]
-      if length(p[i1]) > 0
-	b = conj(p[i1])
-	for (s,j) in enumerate(p[i1])
-	  for i in 1:j
-	    push!(ws, λ*(i-j-1) + μ*(b[i]-s))
-	    push!(ws, λ*(j-i)   + μ*(s-b[i]-1))
-	  end
-	end
-      end
-    end
-    TnRep(ws)
-  end
-  T = TnBundle(H, 2n, loc)
-  H.T = T
-  return H
+  w = [(w[1]-w[4],w[2]-w[3]), (w[4]-w[1],w[2]-w[3]), (w[1]-w[4],w[3]-w[2]), (w[4]-w[1],w[3]-w[2])]
+  _hilb(n, parts, w)
 end
