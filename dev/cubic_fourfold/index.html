@@ -34,8 +34,8 @@ julia&gt; basis(Y₁)
  [1]
  [h]
  [h^2, s]
- [h^3, s*h, s₃]
- [h^4, s₃*h, s^2, s₂, s₁]</code></pre><p>Now we can pushforward classes on <span>$S$</span>.</p><pre><code class="language-julia-repl">julia&gt; pushforward(j, S(1))
+ [h^3, s*h, x2]
+ [h^4, x2*h, s^2, x1, x]</code></pre><p>Now we can pushforward classes on <span>$S$</span>.</p><pre><code class="language-julia-repl">julia&gt; pushforward(j, S(1))
 s
 
 julia&gt; pushforward(j, ctop(-j.T))
@@ -45,9 +45,9 @@ AbsVariety of dim 2
 julia&gt; basis(S)
 3-element Vector{Vector{IntersectionTheory.ChRingElem}}:
  [1]
- [h, e₁, e₂, e₃, e₄]
+ [h, x111, x11, x1, x]
  [h^2]</code></pre><p>It can be embedded in a special cubic fourfold <span>$Y_1$</span> via the anti-canonical linear system.</p><pre><code class="language-julia-repl">julia&gt; K = canonical_class(S)
-e₄ + e₃ + e₂ + e₁ - 3*h
+x + x1 + x11 + x111 - 3*h
 
 julia&gt; chi(OO(S, -K))
 6
@@ -69,4 +69,4 @@ julia&gt; integral((2h - e)^4)
 1
 
 julia&gt; chi(OO(Bl, 2h - e))
-5</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../chern_num/">« Chern number computations</a><a class="docs-footer-nextpage" href="../curves_on_quintic/">Rational curves on a quintic threefold »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 18 July 2021 08:15">Sunday 18 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+5</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../chern_num/">« Chern number computations</a><a class="docs-footer-nextpage" href="../curves_on_quintic/">Rational curves on a quintic threefold »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 30 July 2021 15:09">Friday 30 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
