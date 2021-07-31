@@ -22,17 +22,13 @@ dual(F::TnRep) = TnRep(-F.w)
 det(F::TnRep) = TnRep([sum(F.w)])
 ctop(F::TnRep) = prod(F.w)
 # chern(k::Int, F::TnRep) = sum(prod.(combinations(F.w, k)))
-function chern(k::Int, F::TnRep)
-  k == F.n && return prod(F.w)
-  _chern_dfs!(F.w, F.n, k)
-end
 # perform the enumeration manually: this can save some unnecessary allocation
-function _chern_dfs!(v::Vector, n::Int, k::Int, comb::Vector=typeof(v)(undef, k))
-  k < 1 && return prod(comb)
+chern(k::Int, F::TnRep) = _chern_dfs!(F.w, F.n, k)
+function _chern_dfs!(v::Vector, n::Int, k::Int)
+  k < 1 && return one(v[1])
   ans = zero(v[1])
   for m in n:-1:k
-    comb[k] = v[m]
-    ans += _chern_dfs!(v, m - 1, k - 1, comb)
+    ans += v[m] * _chern_dfs!(v, m - 1, k - 1)
   end
   return ans
 end
@@ -137,9 +133,8 @@ Base.show(io::IO, c::TnBundleChern) = print(io, "Chern class $(c.c) of $(c.F)")
 function _get_ring(F::TnBundle)
   if get_special(F, :R) === nothing
     r = min(F.parent.dim, F.rank)
-    R = Nemo.PolynomialRing(QQ, _parse_symbol("c", 1:r))[1]
-    Ch = ChRing(R, collect(1:r), :variety_dim => F.parent.dim)
-    set_special(F, :R => Ch)
+    R = graded_ring(QQ, _parse_symbol("c", 1:r), collect(1:r), :truncate => F.parent.dim)[1]
+    set_special(F, :R => R)
   end
   get_special(F, :R)
 end
@@ -178,10 +173,10 @@ function _integral(cc::Vector{TnBundleChern})
     cT = ctop(X.T.loc(p))
     for i in 1:length(cc)
       if cT isa AbstractFloat
-	t = prod(typeof(cT)(convert(Rational{BigInt}, a)) * prod(cherns[k] for k in v) for (a,v) in top[i])
+	t = sum(typeof(cT)(convert(Rational{BigInt}, a)) * prod(cherns[k] for k in v) for (a,v) in top[i])
 	ans[i][Threads.threadid()] += t * 1 / (e * cT)
       else
-	t = prod(a * prod(cherns[k] for k in v) for (a,v) in top[i])
+	t = sum(a * prod(cherns[k] for k in v) for (a,v) in top[i])
 	ans[i][Threads.threadid()] += t * 1 // (e * cT)
       end
     end

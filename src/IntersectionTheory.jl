@@ -45,7 +45,7 @@ export twisted_cubics, matrix_moduli
 export hilb_P2, hilb_P1xP1, hilb_surface, hilb_K3, generalized_kummer
 export universal_genus, cobordism_ring, cobordism_class, parameters, @parameters
 export weyl_group, longest_element, perm
-export chow_ring, homogeneous_variety
+export graded_ring, homogeneous_variety
 
 include("Types.jl")
 include("Misc.jl")

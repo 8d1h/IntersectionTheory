@@ -31,7 +31,7 @@ using Test
   @test (x + x^2 + y)[2] == x^2 + y
   @test ishomogeneous(x^2 + y)
   @test !ishomogeneous(x + y)
-  Nemo.AbstractAlgebra.set_special(A, :variety_dim => 2)
+  Nemo.AbstractAlgebra.set_special(A, :truncate => 2)
   trim!(A)
   @test simplify(x^3) == 0
 
@@ -247,8 +247,11 @@ end
   @test integral(chern(1, dual(S))^4) == 2
   @test integral(chern(2, G)^2) == 98
   
-  # polynomial weights
+  # polynomial / float weights
   G = grassmannian(2, 4, bott=true, weights=:poly)
+  S, Q = bundles(G)
+  @test integral(chern(symmetric_power(3, dual(S)))) == 27
+  G = grassmannian(2, 4, bott=true, weights=:float)
   S, Q = bundles(G)
   @test integral(chern(symmetric_power(3, dual(S)))) == 27
 
@@ -264,6 +267,15 @@ end
   PxP = P*P
   @test PxP isa IntersectionTheory.TnVariety
   @test chern_numbers(PxP) == Dict([Nemo.Partition([2]) => 4, Nemo.Partition([1,1]) => 8])
+
+  # other invariants
+  P = hilb_P2(1)
+  @test chi(0, P) == 1
+  td = todd(P)
+  @test td isa IntersectionTheory.TnBundleChern
+  @test integral(td) == 1
+  @test signature(P) == 1
+  @test a_hat_genus(P) == -1//8
  
 end
 

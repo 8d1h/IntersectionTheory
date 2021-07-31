@@ -28,8 +28,7 @@ function Base.getindex(R::CobordRing, n::Int)
     while R.n < n
       R.n = max(2R.n, 1) # double the number of generators
     end
-    S = Nemo.PolynomialRing(R.base, ["[P$i]" for i in 1:R.n])[1]
-    R.R = ChRing(S, collect(1:R.n))
+    R.R = graded_ring(R.base, ["[P$i]" for i in 1:R.n], collect(1:R.n))[1]
   end
   R(gens(R.R)[n])
 end
@@ -227,10 +226,10 @@ function hilb_surface(n::Int, c₁²::T, c₂::U; weights=:int) where {T <: Ring
   HS = _H(n, c₁², c₂, weights=weights)
   coeff(HS, [n])
 end
-function hilb_surface(n::Int, S::Union{Variety, CobordRingElem})
+function hilb_surface(n::Int, S::Union{Variety, CobordRingElem}; weights=:int)
   @assert dim(S) == 2
   c = chern_numbers(S)
-  hilb_surface(n, c[Partition([1,1])], c[Partition([2])])
+  hilb_surface(n, c[Partition([1,1])], c[Partition([2])], weights=weights)
 end
 
 @doc Markdown.doc"""
@@ -248,10 +247,9 @@ function _H(n::Int, c₁²::T, c₂::U; weights=:int) where {T <: RingElement, U
   if F isa AbstractAlgebra.Integers F = QQ end
   a1, a2 = Nemo.solve(Nemo.matrix(F, [9 3; 8 4]'), Nemo.matrix(F, [c₁² c₂]'))
   O = cobordism_ring(base=F)
-  S, (z,) = Nemo.PolynomialRing(O, ["z"])
-  R = ChRing(S, [1], :variety_dim => n)
-  HP2    = a1 == 0 ? R(1) : 1 + R(sum(O(hilb_P2(k, weights=weights))*z^k for k in 1:n))
-  HP1xP1 = a2 == 0 ? R(1) : 1 + R(sum(O(hilb_P1xP1(k, weights=weights))*z^k for k in 1:n))
+  R, (z,) = graded_ring(O, ["z"], :truncate => n)
+  HP2    = a1 == 0 ? R(1) : 1 + sum(O(hilb_P2(k, weights=weights))*z^k for k in 1:n)
+  HP1xP1 = a2 == 0 ? R(1) : 1 + sum(O(hilb_P1xP1(k, weights=weights))*z^k for k in 1:n)
   exp(a1*log(HP2) + a2*log(HP1xP1))
 end
 
@@ -267,16 +265,15 @@ images of the projective spaces using a function `phi`.
 function universal_genus(n::Int, phi::Function=k -> Omega[k]; twist::Int=0)
   n == 0 && return one(phi(1))
   taylor = _taylor(n, phi)
-  R = ChRing(Nemo.PolynomialRing(parent(taylor[1]), _parse_symbol("c", 1:n))[1], collect(1:n), :variety_dim=>n)
-  _genus(_logg(sum(gens(R))), taylor, twist = QQ(twist))
+  R, c = graded_ring(parent(taylor[1]), _parse_symbol("c", 1:n), collect(1:n), :truncate=>n)
+  _genus(_logg(sum(c)), taylor, twist = QQ(twist))
 end
 
 function _taylor(n::Int, phi::Function=k -> Omega[k])
   F = parent(phi(1))
   n == 0 && return [F(1)]
   ans = _taylor(n-1, phi)
-  R = ChRing(Nemo.PolynomialRing(F, ["h"])[1], [1], :variety_dim=>n)
-  h = gens(R)[1]
+  R, (h,) = graded_ring(F, ["h"], :truncate=>n)
   chTP = sum(ZZ(n+1)//factorial(ZZ(i))*h^i for i in 1:n) # ad hoc ch(proj(n).T)
   ans[n+1] = 1//(n+1)*(phi(n) - coeff(_genus(chTP, push!(ans, F(0))), [n]))
   ans
@@ -289,8 +286,7 @@ $\mathrm{Kum}_{n}$-type.
 """
 function generalized_kummer(n::Int; weights=:int)
   hilb_S, c₁² = hilb_P2, 9 # one can also use (hilb_P1xP1, 8)
-  Rz = ChRing(Nemo.PolynomialRing(Omega, ["z"])[1], [1], :variety_dim=>n+1)
-  z = gens(Rz)[1]
+  Rz, (z,) = graded_ring(Omega, ["z"], :truncate=>n+1)
   H = [Omega(hilb_S(k, weights=weights)) for k in 1:n+1]
   g = universal_genus(2(n+1), twist=1)
   K = coeff(log(1+sum(integral(H[k], g) * z^k for k in 1:n+1)), [n+1])[2n]

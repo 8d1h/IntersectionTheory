@@ -249,7 +249,7 @@ mutable struct AbsVariety <: AbsVarietyT
     base = base_ring(R)
     X = new(n, R, base)
     set_special(R, :variety => X)
-    set_special(R, :variety_dim => n)
+    set_special(R, :truncate => n)
     return X
   end
 end
@@ -538,7 +538,7 @@ function hilbert_polynomial(F::AbsBundle)
   toR = x -> Singular.change_base_ring(sQt, x)
   R = parent(toR(X.ring.R()))
   I = Ideal(R, toR.(gens(X.ring.I)))
-  R_ = ChRing(R, X.ring.w, I, :variety_dim => X.dim)
+  R_ = ChRing(R, X.ring.w, I, :truncate => X.dim)
   ch_O_t = 1 + _logg(1 + sQt(t) * R_(toR(O1.f)))
   ch_F = R_(toR(ch(F).f))
   td = R_(toR(todd(X).f))
@@ -645,7 +645,7 @@ end
 #
 function adams(k::Int, x::ChRingElem)
   R = x.parent
-  n = get_special(R, :variety_dim)
+  n = get_special(R, :truncate)
   comps = x[0:n]
   sum([ZZ(k)^i*comps[i+1] for i in 0:n])
 end
@@ -851,7 +851,7 @@ dual_basis(X::AbsVariety) = [dual_basis(k, X) for k in 0:X.dim]
 # the parameter for truncation is usually the dimension, but can also be set
 # manually, which is used when computing particular Chern classes (without
 # computing the total Chern class)
-function _expp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+function _expp(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert truncate != nothing
   n = truncate
   comps = x[0:n]
@@ -864,7 +864,7 @@ function _expp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
   simplify(sum(e))
 end
 
-function _logg(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+function _logg(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert truncate != nothing
   n = truncate
   n == 0 && return zero(x)
@@ -876,7 +876,7 @@ function _logg(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
   simplify(sum((-1)^i//factorial(ZZ(i))*p[i] for i in 1:n))
 end
 
-function Base.exp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+function Base.exp(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert x[0] == 0
   n = truncate == nothing ? total_degree(x) : truncate
   comps = x[0:n]
@@ -889,7 +889,7 @@ function Base.exp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
   simplify(sum(e))
 end
 
-function Base.log(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+function Base.log(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert x[0] == 1
   n = truncate == nothing ? total_degree(x) : truncate
   e = x[1:n]
@@ -902,7 +902,7 @@ end
 
 Base.sqrt(x::ChRingElem) = exp(1//2*log(x))
 
-function Base.inv(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+function Base.inv(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   n = truncate == nothing ? total_degree(x) : truncate
   S, t = Nemo.PowerSeriesRing(parent(x), n+1, "t")
   comps = x[0:n]
@@ -915,7 +915,7 @@ end
 function _wedge(k::Int, x::ChRingElem)
   R = x.parent
   k == 0 && return [R(1)]
-  n = get_special(R, :variety_dim)
+  n = get_special(R, :truncate)
   wedge = repeat([R(0)], k+1)
   wedge[1] = R(1)
   wedge[2] = x
@@ -929,7 +929,7 @@ end
 function _sym(k::Int, x::ChRingElem)
   R = x.parent
   k == 0 && return [R(1)]
-  n = get_special(R, :variety_dim)
+  n = get_special(R, :truncate)
   r = min(k, Int(Singular.ZZ(Singular.QQ(constant_coefficient(x.f)))))
   wedge = _wedge(r, x)
   sym = repeat([R(0)], k+1)
@@ -944,31 +944,29 @@ end
 function _genus(x::ChRingElem, taylor::Vector{T}; twist::U=0) where {T <: RingElement, U <: RingElement}
   R = x.parent
   x == 0 && return R(1)
-  n = get_special(R, :variety_dim)
-  S, (t,) = Nemo.PolynomialRing(parent(taylor[1]), ["t"])
-  S = ChRing(S, [1], :variety_dim => n)
-  lg = log(S(sum(taylor[i+1] * t^i for i in 0:n)))
-  lg = [coeff(lg, [i]) for i in 1:n]
+  n = get_special(R, :truncate)
+  S, (t,) = graded_ring(parent(taylor[1]), ["t"], :truncate => n)
+  lg = log(sum(taylor[i+1] * t^i for i in 0:n))
   comps = x[1:n]
-  exp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n) + twist * gens(R)[1])
+  exp(sum(factorial(ZZ(i)) * coeff(lg, [i]) * comps[i] for i in 1:n) + twist * gens(R)[1])
 end
 
 function _todd(x::ChRingElem)
-  n = get_special(parent(x), :variety_dim)
+  n = get_special(parent(x), :truncate)
   # the Taylor series of t/(1-exp(-t))
   taylor = [(-1)^i//factorial(ZZ(i))*bernoulli(i) for i in 0:n]
   _genus(x, taylor)
 end
 
 function _l_genus(x::ChRingElem)
-  n = get_special(parent(x), :variety_dim)
+  n = get_special(parent(x), :truncate)
   # the Taylor series of sqrt(t)/tanh(sqrt(t))
   taylor = [ZZ(2)^2i//factorial(ZZ(2i))*bernoulli(2i) for i in 0:n]
   _genus(x, taylor)
 end
 
 function _a_hat_genus(x::ChRingElem)
-  n = get_special(parent(x), :variety_dim)
+  n = get_special(parent(x), :truncate)
   # the Taylor series of (sqrt(t)/2)/sinh(sqrt(t)/2)
   R, t = Nemo.PowerSeriesRing(QQ, 2n+1, "t")
   s = Nemo.divexact(t, exp(QQ(1//2)*t)-exp(-QQ(1//2)*t))
@@ -980,9 +978,8 @@ for (g,s) in [:a_hat_genus=>"p", :l_genus=>"p", :todd=>"c"]
   _g = Symbol("_", g)
   @eval function $g(n::Int)
     n == 0 && return QQ(1)
-    R, p = Nemo.PolynomialRing(QQ, _parse_symbol($s, 1:n))
-    R_ = ChRing(R, collect(1:n), :variety_dim => n)
-    $_g(_logg(R_(1+sum(p))))
+    R, p = graded_ring(QQ, _parse_symbol($s, 1:n), collect(1:n), :truncate => n)
+    $_g(_logg(1+sum(p)))
   end
 end
 
@@ -1291,7 +1288,7 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   R1 = PolynomialRing(X.base, syms, ordering=ord)[1]
   pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[n+1:end])
   pfwd = Singular.AlgebraHomomorphism(R1, R.R, vcat(repeat([R.R()], n), gens(R.R)))
-  AˣFl = ChRing(R1, vcat([collect(1:r) for r in ranks]..., R.w), :variety_dim => X.dim+d)
+  AˣFl = ChRing(R1, vcat([collect(1:r) for r in ranks]..., R.w), :truncate => X.dim+d)
   # compute the relations
   c = pushfirst!([1+sum(gens(R1)[dims[i]+1:dims[i+1]]) for i in 1:l-1], 1+sum(gens(R1)[1:dims[1]]))
   Rx, x = R1["x"]

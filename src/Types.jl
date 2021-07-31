@@ -231,7 +231,7 @@ Nemo.isunit(x::ChRingElem) = Nemo.isunit(simplify(x)[0].f)
 
 function Base.getindex(x::ChRingElem, n::Int)
   R = x.parent
-  d = get_special(R, :variety_dim)
+  d = get_special(R, :truncate)
   d !== nothing && n > d && return R(0)
   f = R(x.f, reduce=true).f
   ans = R(0)
@@ -246,7 +246,7 @@ function Base.getindex(x::ChRingElem, I::UnitRange)
   R = x.parent
   f = R(x.f, reduce=true).f
   ans = repeat([R(0)], length(I))
-  d = get_special(R, :variety_dim)
+  d = get_special(R, :truncate)
   stop = (d === nothing) ? I.stop : min(I.stop, d)
   for t in Singular.terms(f)
     d = R.w' * Singular.degrees(t)
@@ -258,7 +258,7 @@ end
 
 function simplify(x::ChRingElem)
   R = x.parent
-  n = get_special(R, :variety_dim)
+  n = get_special(R, :truncate)
   # no dimension restriction
   n === nothing && return R(x.f, reduce=true)
   # otherwise keep only terms in degree ≤ n
@@ -270,7 +270,7 @@ simplify!(x::ChRingElem) = (x.f = simplify(x).f; x)
 
 # add all the relations to a Chow ring due to dimension
 function trim!(R::ChRing)
-  d = get_special(R, :variety_dim)
+  d = get_special(R, :truncate)
   if isdefined(R, :I)
     gI = gens(R.I)
     # check that I is homogeneous, using the weights of R
@@ -309,8 +309,15 @@ function add_rels!(R::ChRing, rels::Vector{Singular.spoly{T}}) where T
   return R
 end
 
-function chow_ring(R::MPolyRing, w::Vector{Int}, rels::Vector{Singular.spoly{T}}) where T
+function graded_ring(R::Singular.PolyRing{T}, w::Vector{Int}, rels::Vector{Singular.spoly{T}}) where T
   ChRing(R, w, Ideal(R, rels))
+end
+graded_ring(F::Ring, symb::Vector{String}, opts::Pair...) = graded_ring(F, symb, repeat([1], length(symb)), opts...)
+function graded_ring(F::Ring, symb::Vector{String}, w::Vector{Int}, opts::Pair...)
+  R = Nemo.PolynomialRing(F, symb)[1]
+  S = ChRing(R, w)
+  for o in opts set_special(S, o) end
+  S, gens(S)
 end
 
 # copied from Oscar. I should really start migrating to Oscar...
