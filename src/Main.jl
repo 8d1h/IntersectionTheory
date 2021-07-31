@@ -511,7 +511,7 @@ l_genus(k::Int, X::AbsVariety)
     a_hat_genus(X::AbsVariety)
 Compute the $\hat A$ genus of a variety $X$."""
 function a_hat_genus(X::AbsVariety)
-  integral(todd(X) * _expp(-1//2 * chern(1, X)))
+  integral(todd(X) * exp(-1//2 * chern(1, X)))
 end
 
 @doc Markdown.doc"""
@@ -851,43 +851,64 @@ dual_basis(X::AbsVariety) = [dual_basis(k, X) for k in 0:X.dim]
 # the parameter for truncation is usually the dimension, but can also be set
 # manually, which is used when computing particular Chern classes (without
 # computing the total Chern class)
-function _expp(x::ChRingElem; truncate::Int=-1)
-  R = x.parent
-  n = truncate < 0 ? get_special(R, :variety_dim) : truncate
+function _expp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+  @assert truncate != nothing
+  n = truncate
   comps = x[0:n]
   p = [(-1)^i*factorial(ZZ(i))*comps[i+1] for i in 0:n]
-  e = repeat([R(0)], n+1)
-  e[1] = R(1)
+  e = repeat([zero(x)], n+1)
+  e[1] = one(x)
   for i in 1:n
     e[i+1] = -1//ZZ(i) * sum(p[j+1] * e[i-j+1] for j in 1:i)
   end
   simplify(sum(e))
 end
 
-function _logg(x::ChRingElem)
-  R = x.parent
-  n = get_special(R, :variety_dim)
-  n == 0 && return R()
+function _logg(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+  @assert truncate != nothing
+  n = truncate
+  n == 0 && return zero(x)
   e = x[1:n]
-  p = pushfirst!(repeat([R()], n-1), -e[1])
+  p = pushfirst!(repeat([zero(x)], n-1), -e[1])
   for i in 1:n-1
     p[i+1] = -ZZ(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i)
   end
   simplify(sum((-1)^i//factorial(ZZ(i))*p[i] for i in 1:n))
 end
 
-function inv(x::ChRingElem)
-  R = x.parent
-  n = get_special(R, :variety_dim)
-  S, t = Nemo.PowerSeriesRing(R.R, n+1, "t")
+function Base.exp(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+  @assert x[0] == 0
+  n = truncate == nothing ? total_degree(x) : truncate
   comps = x[0:n]
-  c = sum([t^i * comps[i+1].f for i in 0:n])
-  s = inv(c)
-  R(sum(Nemo.coeff(s, i) for i in 0:n), reduce=true)
+  p = [ZZ(i) * comps[i+1] for i in 0:n]
+  e = repeat([zero(x)], n+1)
+  e[1] = one(x)
+  for i in 1:n
+    e[i+1] = 1//ZZ(i) * sum(p[j+1] * e[i-j+1] for j in 1:i)
+  end
+  simplify(sum(e))
 end
 
-function Base.sqrt(x::ChRingElem)
-  _expp(1//2*_logg(x))
+function Base.log(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+  @assert x[0] == 1
+  n = truncate == nothing ? total_degree(x) : truncate
+  e = x[1:n]
+  p = pushfirst!(repeat([zero(x)], n-1), e[1])
+  for i in 1:n-1
+    p[i+1] = ZZ(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i)
+  end
+  simplify(sum(1//ZZ(i)*p[i] for i in 1:n))
+end
+
+Base.sqrt(x::ChRingElem) = exp(1//2*log(x))
+
+function Base.inv(x::ChRingElem; truncate=get_special(parent(x), :variety_dim))
+  n = truncate == nothing ? total_degree(x) : truncate
+  S, t = Nemo.PowerSeriesRing(parent(x), n+1, "t")
+  comps = x[0:n]
+  c = sum(t^i * comps[i+1] for i in 0:n)
+  s = inv(c)
+  sum(coeff(s, i) for i in 0:n)
 end
 
 # returns all the wedge from 0 to k
@@ -926,10 +947,10 @@ function _genus(x::ChRingElem, taylor::Vector{T}; twist::U=0) where {T <: RingEl
   n = get_special(R, :variety_dim)
   S, (t,) = Nemo.PolynomialRing(parent(taylor[1]), ["t"])
   S = ChRing(S, [1], :variety_dim => n)
-  lg = _logg(S(sum(taylor[i+1] * t^i for i in 0:n)))
+  lg = log(S(sum(taylor[i+1] * t^i for i in 0:n)))
   lg = [coeff(lg, [i]) for i in 1:n]
   comps = x[1:n]
-  _expp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n) + twist * gens(R)[1])
+  exp(sum(factorial(ZZ(i)) * lg[i] * comps[i] for i in 1:n) + twist * gens(R)[1])
 end
 
 function _todd(x::ChRingElem)

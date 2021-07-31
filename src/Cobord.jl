@@ -39,6 +39,9 @@ mul!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (ab = a * b; c.n
 add!(c::CobordRingElem, a::CobordRingElem, b::CobordRingElem) = (ab = a + b; c.n = ab.n; c.f = ab.f; c)
 addeq!(a::CobordRingElem, b::CobordRingElem) = (ab = a + b; a.n = ab.n; a.f = ab.f; a)
 
+Base.exp(c::CobordRingElem) = parent(c)(exp(c.f))
+Base.log(c::CobordRingElem) = parent(c)(log(c.f))
+
 function (R::CobordRing)(X::Variety)
   if X isa AbsVariety
     @assert integral(X(0)) isa fmpq
@@ -124,6 +127,7 @@ function integral(x::CobordRingElem, t::ChRingElem)
 end
 
 todd(x::CobordRingElem) = integral(x, todd(dim(x)))
+chi(p::Int, x::CobordRingElem) = integral(x, chi(p, variety(dim(x))))
 signature(x::CobordRingElem) = integral(x, signature(variety(dim(x))))
 a_hat_genus(x::CobordRingElem) = integral(x, a_hat_genus(variety(dim(x))))
 
@@ -246,9 +250,9 @@ function _H(n::Int, c₁²::T, c₂::U; weights=:int) where {T <: RingElement, U
   O = cobordism_ring(base=F)
   S, (z,) = Nemo.PolynomialRing(O, ["z"])
   R = ChRing(S, [1], :variety_dim => n)
-  HP2    = a1 == 0 ? R() : 1 + R(sum(O(hilb_P2(k, weights=weights))*z^k for k in 1:n))
-  HP1xP1 = a2 == 0 ? R() : 1 + R(sum(O(hilb_P1xP1(k, weights=weights))*z^k for k in 1:n))
-  _expp(a1*_logg(HP2) + a2*_logg(HP1xP1))
+  HP2    = a1 == 0 ? R(1) : 1 + R(sum(O(hilb_P2(k, weights=weights))*z^k for k in 1:n))
+  HP1xP1 = a2 == 0 ? R(1) : 1 + R(sum(O(hilb_P1xP1(k, weights=weights))*z^k for k in 1:n))
+  exp(a1*log(HP2) + a2*log(HP1xP1))
 end
 
 @doc Markdown.doc"""
@@ -289,8 +293,8 @@ function generalized_kummer(n::Int; weights=:int)
   z = gens(Rz)[1]
   H = [Omega(hilb_S(k, weights=weights)) for k in 1:n+1]
   g = universal_genus(2(n+1), twist=1)
-  K = coeff(_logg(sum(integral(H[k], g) * z^k for k in 1:n+1)), [n+1])[2n]
-  (-1)^n * QQ(n+1, c₁²) * factorial(ZZ(n+1)) * 2K
+  K = coeff(log(1+sum(integral(H[k], g) * z^k for k in 1:n+1)), [n+1])[2n]
+  2(n+1)^2 // c₁² * K
 end
 
 @doc Markdown.doc"""

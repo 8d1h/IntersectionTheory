@@ -124,9 +124,9 @@ base_ring(R::ChRing) = base_ring(R.R)
 (R::ChRing)(x::ChRingElem) = R(x.f)
 zero(x::ChRingElem) = zero(parent(x))
 one(x::ChRingElem) = one(parent(x))
-mul!(c::ChRingElem, a::ChRingElem, b::ChRingElem) = (c.f = a.f * b.f; c)
-add!(c::ChRingElem, a::ChRingElem, b::ChRingElem) = (c.f = a.f + b.f; c)
-addeq!(a::ChRingElem, b::ChRingElem) = (a.f += b.f; a)
+mul!(c::ChRingElem, a::ChRingElem, b::ChRingElem) = (c.f = (a*b).f; c)
+add!(c::ChRingElem, a::ChRingElem, b::ChRingElem) = (add!(c.f, a.f, b.f); c)
+addeq!(a::ChRingElem, b::ChRingElem) = (addeq!(a.f, b.f); a)
 
 # avoid changing the parent ring
 deepcopy(x::ChRingElem) = parent(x)(deepcopy(x.f))
@@ -202,33 +202,32 @@ end
 ^(x::ChRingElem, n::Int) = x.parent(x.f^n, reduce=true)
 ==(x::ChRingElem, y::ChRingElem) = (
   (x, y) = _coerce(x, y);
-  R = x.parent;
-  R(x.f, reduce=true).f == R(y.f, reduce=true).f)
+  simplify(x).f == simplify(y).f)
 
 coeff(x::ChRingElem, exps::Vector{Int}) = coeff(x.f, exps)
 
 function total_degree(x::ChRingElem)
-  R = x.parent
-  f = R(x.f, reduce=true).f
+  f = simplify(x).f
   f == 0 && return -1
-  max([sum(R.w .* Singular.degrees(t)) for t in Singular.terms(f)]...)
+  max([sum(parent(x).w .* Singular.degrees(t)) for t in Singular.terms(f)]...)
 end
 
 function ishomogeneous(x::ChRingElem)
-  R = x.parent
-  f = R(x.f, reduce=true).f
+  f = simplify(x).f
   f == 0 && return true
-  degs = [sum(R.w .* Singular.degrees(t)) for t in Singular.terms(f)]
+  degs = [sum(parent(x).w .* Singular.degrees(t)) for t in Singular.terms(f)]
   all(d -> d==degs[1], degs)
 end
 
-div(x::ChRingElem, y::ChRingElem) = (
-  (x, y) = _coerce(x, y);
-  R = x.parent;
-  xf = R(x.f, reduce=true).f;
-  yf = R(y.f, reduce=true).f;
-  if yf == 0 throw(DivideError) end;
-  R(div(xf, yf)))
+function div(x::ChRingElem, y::ChRingElem)
+  x, y = _coerce(x, y)
+  x.parent(div(simplify(x).f, simplify(y).f))
+end
+function Nemo.divexact(x::ChRingElem, y::ChRingElem)
+  x, y = _coerce(x, y)
+  x.parent(Nemo.divexact(simplify(x).f, simplify(y).f))
+end
+Nemo.isunit(x::ChRingElem) = Nemo.isunit(simplify(x)[0].f)
 
 function Base.getindex(x::ChRingElem, n::Int)
   R = x.parent
@@ -263,7 +262,7 @@ function simplify(x::ChRingElem)
   # no dimension restriction
   n === nothing && return R(x.f, reduce=true)
   # otherwise keep only terms in degree ≤ n
-  n < 0 && return R.R()
+  n < 0 && return R()
   return sum(x[0:n])
 end
 

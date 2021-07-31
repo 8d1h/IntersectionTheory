@@ -8,7 +8,7 @@ import Markdown
 
 import Base: +, -, *, ^, ==, div, zero, one, parent, mod, deepcopy
 import Nemo: fmpz, fmpq, ZZ, QQ
-import Nemo: dim, rank, domain, codomain, gens, inv, det, basis, bernoulli, coeff
+import Nemo: dim, rank, domain, codomain, gens, det, basis, bernoulli, coeff
 import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!, MPolyElem
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
@@ -43,7 +43,7 @@ export blowup, blowup_points, graph
 export trim!
 export twisted_cubics, matrix_moduli
 export hilb_P2, hilb_P1xP1, hilb_surface, hilb_K3, generalized_kummer
-export universal_genus, cobordism_ring, cobordism_class, parameters
+export universal_genus, cobordism_ring, cobordism_class, parameters, @parameters
 export weyl_group, longest_element, perm
 export chow_ring, homogeneous_variety
 

@@ -66,6 +66,10 @@ end
 
 parameters(param::String...) = FunctionField(Singular.QQ, collect(param))[2]
 
+macro parameters(param...)
+  :($(esc(Expr(:tuple, param...))) = parameters(string.($param[:])...))
+end
+
 ###############################################################################
 #
 # coercions
