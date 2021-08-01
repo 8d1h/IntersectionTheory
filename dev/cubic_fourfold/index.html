@@ -17,10 +17,7 @@ AbsBundle of rank 2 on AbsVariety of dim 2
 julia&gt; trim!(S.ring);
 
 julia&gt; basis(S)
-3-element Vector{Vector{IntersectionTheory.ChRingElem}}:
- [1]
- [c1, h]
- [c2, c1^2, h*c1, h^2]</code></pre><p>Here we first built a generic 2-dimensional variety with some classes, then we specified its tangent bundle. The step <code>trim!</code> is to get rid of classes that have codimension larger than 2.</p><p>Now we build the inclusion.</p><pre><code class="language-julia-repl">julia&gt; i = hom(S, Y, [h])
+ERROR: BoundsError: attempt to access 3-element Vector{Vector{IntersectionTheory.ChRingElem}} at index [0]</code></pre><p>Here we first built a generic 2-dimensional variety with some classes, then we specified its tangent bundle. The step <code>trim!</code> is to get rid of classes that have codimension larger than 2.</p><p>Now we build the inclusion.</p><pre><code class="language-julia-repl">julia&gt; i = hom(S, Y, [h])
 AbsVarietyHom from AbsVariety of dim 2 to AbsVariety of dim 4</code></pre><p>The self-intersection number of <span>$S$</span> in <span>$Y$</span> is equal to the top Chern class of the normal bundle, while this latter can be accessed as the negative of the relative tangent bundle of <span>$i$</span>.</p><pre><code class="language-julia-repl">julia&gt; ctop(-i.T)
 6*h^2 - 3*h*c1 + c1^2 - c2</code></pre><p>Since we saw that there is no algebraic class in <span>$Y$</span> for the surface <span>$S$</span>, the classes on <span>$S$</span> cannot be pushforward to <span>$Y$</span>.</p><pre><code class="language-julia-repl">julia&gt; pushforward(i, S(1))
 ERROR: UndefRefError: access to undefined reference</code></pre><p>To overcome this we may use the argument <code>inclusion=true</code> when building the inclusion. The returned inclusion will then have its codomain a modified version of <span>$Y$</span>, with extra classes added.</p><pre><code class="language-julia-repl">julia&gt; j = hom(S, Y, [h], inclusion=true, symbol=&quot;s&quot;)
@@ -30,12 +27,7 @@ julia&gt; Y₁ = j.codomain
 AbsVariety of dim 4
 
 julia&gt; basis(Y₁)
-5-element Vector{Vector{IntersectionTheory.ChRingElem}}:
- [1]
- [h]
- [h^2, s]
- [h^3, s*h, x2]
- [h^4, x2*h, s^2, x1, x]</code></pre><p>Now we can pushforward classes on <span>$S$</span>.</p><pre><code class="language-julia-repl">julia&gt; pushforward(j, S(1))
+ERROR: BoundsError: attempt to access 5-element Vector{Vector{IntersectionTheory.ChRingElem}} at index [0]</code></pre><p>Now we can pushforward classes on <span>$S$</span>.</p><pre><code class="language-julia-repl">julia&gt; pushforward(j, S(1))
 s
 
 julia&gt; pushforward(j, ctop(-j.T))
@@ -45,9 +37,9 @@ AbsVariety of dim 2
 julia&gt; basis(S)
 3-element Vector{Vector{IntersectionTheory.ChRingElem}}:
  [1]
- [h, x111, x11, x1, x]
+ [h, e₁, e₂, e₃, e₄]
  [h^2]</code></pre><p>It can be embedded in a special cubic fourfold <span>$Y_1$</span> via the anti-canonical linear system.</p><pre><code class="language-julia-repl">julia&gt; K = canonical_class(S)
-x + x1 + x11 + x111 - 3*h
+e₄ + e₃ + e₂ + e₁ - 3*h
 
 julia&gt; chi(OO(S, -K))
 6
@@ -69,4 +61,4 @@ julia&gt; integral((2h - e)^4)
 1
 
 julia&gt; chi(OO(Bl, 2h - e))
-5</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../chern_num/">« Chern number computations</a><a class="docs-footer-nextpage" href="../curves_on_quintic/">Rational curves on a quintic threefold »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 30 July 2021 15:09">Friday 30 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+5</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../chern_num/">« Chern number computations</a><a class="docs-footer-nextpage" href="../curves_on_quintic/">Rational curves on a quintic threefold »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 1 August 2021 17:46">Sunday 1 August 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
