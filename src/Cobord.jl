@@ -17,7 +17,7 @@ end
   R[n]
   CobordRingElem(R, R.n, f.f(gens(R.R)[1:n]...))
 end
-(R::CobordRing)(n::T) where T <: Union{Int, Rational, fmpz, fmpq, n_transExt} = (R[1]; CobordRingElem(R, R.n, R.R(n)))
+(R::CobordRing)(n::RingElement) = (R[1]; CobordRingElem(R, R.n, R.R(n))) # fallback method
 (R::CobordRing)() = R(0)
 zero(R::CobordRing) = R(0)
 one(R::CobordRing) = R(1)
@@ -41,17 +41,13 @@ addeq!(a::CobordRingElem, b::CobordRingElem) = (ab = a + b; a.n = ab.n; a.f = ab
 Base.exp(c::CobordRingElem) = parent(c)(exp(c.f))
 Base.log(c::CobordRingElem) = parent(c)(log(c.f))
 
-function (R::CobordRing)(X::Variety)
-  if X isa AbsVariety
-    @assert integral(X(0)) isa fmpq
-  end
-  R(chern_numbers(X))
-end
+(R::CobordRing)(X::Variety) = R(chern_numbers(X))
 
 @doc Markdown.doc"""
     cobordism_class(X::Variety)
 Construct the cobordism class of a variety $X$."""
 cobordism_class(X::Variety; base::Ring=QQ) = cobordism_ring(base=base)(X)
+cobordism_class(X::AbsVariety; base::Ring=X.base) = (if base==Singular.QQ base=QQ end; cobordism_ring(base=base)(X))
 
 function (R::CobordRing)(c::Dict{T, U}) where {T <: Partition, U <: RingElement}
   P = collect(keys(c))
@@ -125,10 +121,23 @@ function integral(x::CobordRingElem, t::ChRingElem)
   ans = sum(c[_exp_to_partition(v)] * (a isa n_Q ? QQ(a) : a) for (a, v) in zip(Nemo.coefficients(t.f), Nemo.exponent_vectors(t.f)))
 end
 
-todd(x::CobordRingElem) = integral(x, todd(dim(x)))
+# take advantage of the multiplicativity
+function todd(x::CobordRingElem)
+  f = x.f.f
+  n = length(gens(parent(f)))
+  Nemo.evaluate(f, repeat([1], n))
+end
+function signature(x::CobordRingElem)
+  f = x.f.f
+  n = length(gens(parent(f)))
+  Nemo.evaluate(f, [iseven(k) ? 1 : 0 for k in 1:n])
+end
+function a_hat_genus(x::CobordRingElem)
+  f = x.f.f
+  n = length(gens(parent(f)))
+  Nemo.evaluate(f, [iseven(k) ? ((-1)^(k÷2) * factorial(ZZ(k)) // (factorial(ZZ(k÷2))^2 * ZZ(2)^2k)) : QQ() for k in 1:n])
+end
 chi(p::Int, x::CobordRingElem) = integral(x, chi(p, variety(dim(x))))
-signature(x::CobordRingElem) = integral(x, signature(variety(dim(x))))
-a_hat_genus(x::CobordRingElem) = integral(x, a_hat_genus(variety(dim(x))))
 
 function _generic_variety(n::Int)
   cache = get_special(Omega, :generic_variety)
@@ -272,10 +281,10 @@ end
 function _taylor(n::Int, phi::Function=k -> Omega[k])
   F = parent(phi(1))
   n == 0 && return [F(1)]
-  ans = _taylor(n-1, phi)
+  ans = push!(_taylor(n-1, phi), F(0))
   R, (h,) = graded_ring(F, ["h"], :truncate=>n)
   chTP = sum(ZZ(n+1)//factorial(ZZ(i))*h^i for i in 1:n) # ad hoc ch(proj(n).T)
-  ans[n+1] = 1//(n+1)*(phi(n) - coeff(_genus(chTP, push!(ans, F(0))), [n]))
+  ans[n+1] = 1//(n+1)*(phi(n) - coeff(_genus(chTP, ans), [n]))
   ans
 end
 

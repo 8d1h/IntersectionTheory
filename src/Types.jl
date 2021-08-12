@@ -205,6 +205,7 @@ end
   simplify(x).f == simplify(y).f)
 
 coeff(x::ChRingElem, exps::Vector{Int}) = coeff(x.f, exps)
+Nemo.terms(x::ChRingElem) = parent(x).(Nemo.terms(x.f))
 
 function total_degree(x::ChRingElem)
   f = simplify(x).f

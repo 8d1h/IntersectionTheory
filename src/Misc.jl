@@ -103,11 +103,11 @@ promote_rule(::Type{n_transExt}, ::Type{fmpq}) = Singular.n_transExt
 # pretty printing
 # 
 # generate a list of symbols [x₁,…,xₙ] using LaTeX / unicode for IJulia / REPL
-function _parse_symbol(symbol::String, I::UnitRange)
+function _parse_symbol(symbol::String, I::AbstractVector)
   isdefined(Main, :IJulia) && Main.IJulia.inited && return [symbol*"_{$i}" for i in I]
   [symbol*subscriptify(i) for i in I]
 end
-function _parse_symbol(symbol::String, n::Int, I::UnitRange)
+function _parse_symbol(symbol::String, n::Int, I::AbstractVector)
   isdefined(Main, :IJulia) && Main.IJulia.inited && return [symbol*"_{$n,$i}" for i in I]
   [symbol*subscriptify(n)*","*subscriptify(i) for i in I]
 end
