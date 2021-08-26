@@ -3,18 +3,28 @@
 # some utility functions
 #
 
-# partitions of n with at most k numbers each ≤ m
-function partitions(n::Int, k::Int=n, m::Int=-1)
-  ans = Partition[]
-  (n > 0 && k == 0) && return ans
-  if m < 0 m = n end
-  n <= m && push!(ans, Partition(n > 0 ? [n] : Int[]))
-  for v in Int(min(n-1,m)):-1:1
-    for p in partitions(n-v, k-1, v)
-      push!(ans, Partition(pushfirst!(collect(p), v)))
-    end
+function set!(x::fmpz, y::Int)
+  ccall((:fmpz_set_si, Nemo.libflint), Nothing, (Ref{fmpz}, Int), x, y)
+  return x
+end
+function set!(x::fmpq, n::fmpz, d::fmpz)
+  ccall((:fmpq_set_fmpz_frac, Nemo.libflint), Nothing, (Ref{fmpq}, Ref{fmpz}, Ref{fmpz}), x, n, d)
+  return x
+end
+
+function _part(n::T, rem::T, k::T, m::T, part::Vector{T}, ans::Vector{Partition{T}}) where T <: Integer
+  rem == 0 && (push!(ans, Partition(n, part[1:end-k], false)); return)
+  k <= 0 && return
+  for v in min(rem, m):-T(1):T(1)
+    part[end-k+1] = v
+    _part(n, rem-v, k-T(1), v, part, ans)
   end
-  ans
+end
+# partitions of n with at most k numbers each <= m
+function partitions(n::T, k::T=n, m::T=n) where T <: Integer
+  ans = Partition{T}[]
+  _part(n, n, k, m, Vector{T}(undef, k), ans)
+  return ans
 end
 
 # XXX remove once in AA

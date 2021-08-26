@@ -7,13 +7,13 @@
 
 The type of a representation of a torus, specified by its weights.
 """
-struct TnRep
+struct TnRep{W <: RingElement}
   n::Int
-  w::Vector
+  w::Vector{W}
   function TnRep(w::Vector{W}) where W
     # be sure to use fmpz to avoid overflow
-    W <: Integer && return new(length(w), ZZ.(w))
-    new(length(w), w)
+    W <: Integer && return new{fmpz}(length(w), ZZ.(w))
+    new{W}(length(w), w)
   end
 end
 dual(F::TnRep) = TnRep(-F.w)
@@ -21,16 +21,36 @@ dual(F::TnRep) = TnRep(-F.w)
 *(F::TnRep, G::TnRep) = TnRep([a+b for a in F.w for b in G.w])
 det(F::TnRep) = TnRep([sum(F.w)])
 ctop(F::TnRep) = prod(F.w)
-# chern(k::Int, F::TnRep) = sum(prod.(combinations(F.w, k)))
-# perform the enumeration manually: this can save some unnecessary allocation
-chern(k::Int, F::TnRep) = _chern_dfs!(F.w, F.n, k)
-function _chern_dfs!(v::Vector, n::Int, k::Int)
-  k < 1 && return one(v[1])
-  ans = zero(v[1])
-  for m in n:-1:k
-    ans += v[m] * _chern_dfs!(v, m - 1, k - 1)
+chern(k::Int, F::TnRep) = sum(prod.(combinations(F.w, k))) # fallback method
+# perform the enumeration manually and use in-place operators
+# this significantly improves the performance
+function ctop(F::TnRep{fmpz}, ans::fmpz = fmpz())
+  set!(ans, 1)
+  for i in 1:F.n
+    mul!(ans, ans, F.w[i])
   end
   return ans
+end
+
+function chern(k::Int, F::TnRep{fmpz},
+    ans::fmpz = fmpz(),
+    part_prod::Vector{fmpz} = [fmpz() for _ in 0:k])
+  # initialize the values
+  Nemo.zero!(ans)
+  for i in 1:k Nemo.zero!(part_prod[i]) end
+  set!(part_prod[k+1], 1)
+  # depth-first search enumeration
+  _chern_dfs!(F.w, F.n, k, ans, part_prod)
+  return ans
+end
+
+function _chern_dfs!(values::Vector{fmpz}, n::Int, k::Int,
+    ans::fmpz, part_prod::Vector{fmpz})
+  k < 1 && (add!(ans, ans, part_prod[1]); return)
+  for m in n:-1:k
+    mul!(part_prod[k], part_prod[k+1], values[m])
+    _chern_dfs!(values, m-1, k-1, ans, part_prod)
+  end
 end
 
 ###############################################################################
@@ -68,6 +88,8 @@ mutable struct TnBundle{P, V <: TnVarietyT{P}} <: Bundle
   end
 end
 
+(F::TnBundle{P, V})(pt::P) where {P, V} = F.loc(pt)
+
 @doc Markdown.doc"""
     TnVariety(n::Int, points)
 
@@ -93,23 +115,23 @@ OO(X::TnVariety) = TnBundle(X, 1, p -> TnRep([0]))
 function *(X::TnVariety, Y::TnVariety)
   points = [[p[1],q[1]] => p[2]*q[2] for (p, q) in Base.Iterators.product(X.points, Y.points)][:]
   XY = TnVariety(dim(X) + dim(Y), points)
-  T = TnBundle(XY, dim(XY), p -> TnRep(vcat(X.T.loc(p[1]).w, Y.T.loc(p[2]).w)))
+  T = TnBundle(XY, dim(XY), p -> TnRep(vcat(X.T(p[1]).w, Y.T(p[2]).w)))
   XY.T = T
   return XY
 end
 
-dual(F::TnBundle) = TnBundle(F.parent, F.rank, p -> dual(F.loc(p)))
-+(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank + G.rank, p -> F.loc(p) + G.loc(p))
-*(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank * G.rank, p -> F.loc(p) * G.loc(p))
-det(F::TnBundle) = TnBundle(F.parent, 1, p -> det(F.loc(p)))
+dual(F::TnBundle) = TnBundle(F.parent, F.rank, p -> dual(F(p)))
++(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank + G.rank, p -> F(p) + G(p))
+*(F::TnBundle, G::TnBundle) = TnBundle(F.parent, F.rank * G.rank, p -> F(p) * G(p))
+det(F::TnBundle) = TnBundle(F.parent, 1, p -> det(F(p)))
 
 function symmetric_power(k::Int, F::TnBundle)
   TnBundle(F.parent, binomial(F.rank+k-1, k), p -> (
-    TnRep(sum.(_sym(F.loc(p).w, k)))))
+    TnRep(sum.(_sym(F(p).w, k)))))
 end
 function exterior_power(k::Int, F::TnBundle)
   TnBundle(F.parent, binomial(F.rank, k), p -> (
-    TnRep(sum.(combinations(F.loc(p).w, k)))))
+    TnRep(sum.(combinations(F(p).w, k)))))
 end
 
 # we want the same syntax `integral(chern(F))` as in Schubert calculus
@@ -157,51 +179,56 @@ a_hat_genus(X::TnVariety) = integral(chern(X.T, a_hat_genus(variety(dim(X))).f))
 
 # compute multiple integrals simultaneously to avoid redundant computations
 # used in `chern_numbers` for example
-function _integral(cc::Vector{TnBundleChern})
-  F, R = cc[1].F, parent(cc[1].c)
-  @assert all(c -> c.F == F, cc)
-  X = F.parent
-  n, r = X.dim, length(gens(R))
-  top = [c.c[n].f for c in cc]
-  exp_vec = sum(vcat(sum.(Nemo.exponent_vectors.(top))))
-  idx = filter(i -> exp_vec[i] > 0, 1:r)
-  top = [[(a, _exp_to_partition(v)) for (a,v) in zip(Nemo.coefficients(t), Nemo.exponent_vectors(t))] for t in top]
-  ans = Vector{Any}[repeat([0], Threads.nthreads()) for _ in cc]
-  Threads.@threads for (p,e) in X.points # Bott's formula
-    Fp = F.loc(p)
-    cherns = [i in idx ? chern(i, Fp) : 0 for i in 1:r]
-    cT = ctop(X.T.loc(p))
-    for i in 1:length(cc)
-      if cT isa AbstractFloat
-	t = sum(typeof(cT)(convert(Rational{BigInt}, a)) * prod(cherns[k] for k in v) for (a,v) in top[i])
-	ans[i][Threads.threadid()] += t * 1 / (e * cT)
-      else
-	t = sum(a * prod(cherns[k] for k in v) for (a,v) in top[i])
-	ans[i][Threads.threadid()] += t * 1 // (e * cT)
-      end
+function _integral(F::TnBundle, pp::Vector)
+  X = parent(F)
+  # all the allocations are done beforehand
+  _ans = [[fmpq() for _ in 1:Threads.nthreads()] for _ in pp]
+  chern_ans = [[fmpz() for _ in 1:F.rank] for _ in 1:Threads.nthreads()]
+  part_prod = [[fmpz() for _ in 0:F.rank] for _ in 1:Threads.nthreads()]
+  extra = [(fmpz(), fmpz(), fmpq()) for _ in 1:Threads.nthreads()]
+  idx = union(pp...) # only compute the Chern classes needed
+  # the main loop using Bott's formula
+  Threads.@threads for (p,e) in X.points
+    Fp = F(p)
+    id = Threads.threadid()
+    cherns = chern_ans[id]
+    for i in idx
+      chern(i, Fp, cherns[i], part_prod[id])
+    end
+    z, TXp, q = extra[id]
+    ctop(X.T(p), TXp)
+    for i in 1:length(pp)
+      set!(z, 1)
+      for j in pp[i] mul!(z, z, cherns[j]) end
+      set!(q, z, TXp * e)
+      addeq!(_ans[i][id], q)
     end
   end
-  _round.(sum.(ans))
+  ans = [QQ() for p in pp]
+  for i in 1:length(pp)
+    for x in _ans[i] add!(ans[i], ans[i], x) end
+  end
+  ans
 end
 
-_round(x::AbstractFloat) = (n = round(x); @assert abs(n - x) < 1e-3; QQ(BigInt(n)))
-_round(x::fmpq) = x
-_round(x::AbstractAlgebra.Generic.Frac) = QQ(numerator(x)) // QQ(denominator(x))
-
 function integral(c::TnBundleChern)
-  _integral([c])[1]
+  n = parent(c.F).dim
+  top = c.c[n].f
+  r = length(gens(parent(c.c)))
+  exp_vec = sum(Nemo.exponent_vectors(top))
+  idx = filter(i -> exp_vec[i] > 0, 1:r)
+  exp_vec = _exp_to_partition.(Nemo.exponent_vectors(top))
+  sum([a * c for (a, c) in zip(Nemo.coefficients(top), _integral(c.F, exp_vec))])
 end
 
 function chern_number(X::TnVariety, λ::AbstractVector{Int})
   sum(λ) == dim(X) || error("not a partition of the dimension")
-  c = [chern(i, X) for i in 1:dim(X)]
-  integral(prod([c[i] for i in λ]))
+  _integral(X.T, [collect(λ)])[1]
 end
 
 function chern_numbers(X::TnVariety, P::Vector{T}=partitions(dim(X)); nonzero::Bool=false) where T <: Partition
   all(λ -> sum(λ) == dim(X), P) || error("not a partition of the dimension")
-  c = [chern(i, X) for i in 1:dim(X)]
-  ans = _integral([prod([c[i] for i in λ]) for λ in P])
+  ans = _integral(X.T, collect.(P))
   Dict([λ => ci for (ci, λ) in zip(ans, P) if !nonzero || ci != 0])
 end
 
@@ -213,7 +240,6 @@ end
 function _parse_weight(n::Int, w)
   w == :int   && return ZZ.(1:n)
   w == :poly  && return Nemo.PolynomialRing(QQ, ["u$i" for i in 1:n])[2]
-  w == :float && return Float128.(1:n)
   if (w isa UnitRange) w = collect(w) end
   w isa Vector && length(w) == n && return w
   error("incorrect specification for weights")
@@ -298,7 +324,6 @@ Construct the Hilbert scheme of $n$ points on $\mathbf P^2$ as a `TnVariety`.
 function hilb_P2(n::Int; weights=:int)
   parts = [[a-1, b-a-1, n+2-b] for (a,b) in combinations(n+2, 2)]
   if weights == :int weights = [0,1,2+n] end
-  if weights == :float weights = Float128[0,1,2+n] end
   w = _parse_weight(3, weights)
   w = [(w[2]-w[1],w[3]-w[1]), (w[3]-w[2],w[1]-w[2]), (w[1]-w[3],w[2]-w[3])]
   _hilb(n, parts, w)
@@ -312,7 +337,6 @@ a `TnVariety`.
 function hilb_P1xP1(n::Int; weights=:int)
   parts = [[a-1, b-a-1, c-b-1, n+3-c] for (a,b,c) in combinations(n+3, 3)]
   if weights == :int weights = [0,1,2,3+n] end
-  if weights == :float weights = Float128[0,1,2,3+n] end
   w = _parse_weight(4, weights)
   w = [(w[1]-w[4],w[2]-w[3]), (w[4]-w[1],w[2]-w[3]), (w[1]-w[4],w[3]-w[2]), (w[4]-w[1],w[3]-w[2])]
   _hilb(n, parts, w)

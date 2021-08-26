@@ -139,40 +139,30 @@ function a_hat_genus(x::CobordRingElem)
 end
 chi(p::Int, x::CobordRingElem) = integral(x, chi(p, variety(dim(x))))
 
-function _generic_variety(n::Int)
-  cache = get_special(Omega, :generic_variety)
-  if cache == nothing
-    cache = Dict{Int, AbsVariety}()
-    set_special(Omega, :generic_variety => cache)
-  end
-  if !(n in keys(cache))
-    X = variety(n)
-    cache[n] = X
-  end
-  cache[n]
-end
 function _generic_product_chern_numbers(m::Int, n::Int)
   cache = get_special(Omega, :generic_product_chern_numbers)
   if cache == nothing
-    cache = Dict{Tuple{Int, Int}, Dict{Partition, Dict{Tuple{Partition, Partition}, Any}}}()
+    cache = Dict{Tuple{Int, Int}, Dict{Partition, Dict{Tuple{Partition, Partition}, fmpz}}}()
     set_special(Omega, :generic_product_chern_numbers => cache)
   end
   mn = (m, n)
   if !(mn in keys(cache))
-    X = _generic_variety(m)
-    Y = _generic_variety(n)
-    c = chern_numbers(X * Y)
-    ans = typeof(cache).parameters[2]()
-    for k in keys(c)
-      ansk = typeof(ans).parameters[2]()
-      for (a, v) in zip(Nemo.coefficients(c[k].f), Nemo.exponent_vectors(c[k].f))
-	p = _exp_to_partition(v[1:m])
-	if sum(p) == m
-	  q = _exp_to_partition(v[m+1:end])
-	  ansk[(p, q)] = a isa n_Q ? QQ(a) : a
-	end
+    R, cd = graded_ring(ZZ, vcat(["c$i" for i in 1:m], ["d$i" for i in 1:n]), vcat(collect(1:m), collect(1:n)))
+    c, d = cd[1:m], cd[m+1:end]
+    TX, TY = 1 + sum(c), 1 + sum(d)
+    C = (TX * TY)[1:m+n]
+    pp = partitions(m+n)
+    ans = Dict{Partition, Dict{Tuple{Partition, Partition}, fmpz}}()
+    for p in pp
+      ans[p] = Dict{Tuple{Partition, Partition}, fmpz}()
+      Cp = prod(C[i] for i in p).f
+      for (c,e) in zip(Nemo.coefficients(Cp), Nemo.exponent_vectors(Cp))
+        if collect(1:m)' * e[1:m] == m
+          p1 = Partition([i for i in m:-1:1 for _ in 1:e[i]])
+          p2 = Partition([i for i in n:-1:1 for _ in 1:e[m+i]])
+          ans[p][(p1,p2)] = c
+        end
       end
-      ans[k] = ansk
     end
     cache[mn] = ans
   end
@@ -190,9 +180,10 @@ function _product_chern_numbers(x::Dict{<:Partition, U}, y::Dict{<:Partition, V}
   ans
 end
 
-function chern_numbers_of_product(Xs::Vector{<:Variety})
-  length(Xs) == 1 && return chern_numbers(Xs[1])
-  _product_chern_numbers(chern_numbers(Xs[1]), chern_numbers_of_product(Xs[2:end]))
+function _product_chern_numbers(Xs::Vector)
+  n = length(Xs)
+  n == 1 && return Xs[1]
+  _product_chern_numbers(_product_chern_numbers(Xs[1:n÷2]), _product_chern_numbers(Xs[n÷2+1:end]))
 end
 
 function _chern_numbers_of_prod_Pn(n::Int)
@@ -203,12 +194,21 @@ function _chern_numbers_of_prod_Pn(n::Int)
   end
   if !(n in keys(B))
     P = partitions(n)
-    Pn = [proj(k) for k in 1:n]
-    c = Dict{Partition, Dict{Partition, fmpq}}()
-    for λ in P
-      c[λ] = chern_numbers_of_product([Pn[d] for d in λ])
-    end
+    Pn = [chern_numbers(proj(k)) for k in 1:n]
+    c = Dict([λ => reduce(_product_chern_numbers, [Pn[d] for d in λ]) for λ in P])
     B[n] = Nemo.matrix(QQ, [c[μ][λ] for λ in P, μ in P])
+  end
+  B[n]
+end
+
+function _inv_chern_numbers_of_prod_Pn(n::Int)
+  B = get_special(Omega, :inv_chern_numbers_of_prod_Pn)
+  if B == nothing
+    B = Dict{Int, Nemo.fmpq_mat}()
+    set_special(Omega, :inv_chern_numbers_of_prod_Pn => B)
+  end
+  if !(n in keys(B))
+    B[n] = inv(_chern_numbers_of_prod_Pn(n))
   end
   B[n]
 end
@@ -221,7 +221,7 @@ function _to_prod_Pn(n::Int, c::Dict{T, U}) where {T <: Partition, U <: RingElem
   F = parent(sum(values(c)))
   if F isa AbstractAlgebra.Integers F = QQ end
   c = [λ in keys(c) ? c[λ] : F(0) for λ in partitions(n), j in 1:1]
-  vec(collect(Nemo.solve(Nemo.change_base_ring(F, _chern_numbers_of_prod_Pn(n)), Nemo.matrix(F, c))))
+  _inv_chern_numbers_of_prod_Pn(n) * Nemo.matrix(F, c)
 end
 
 # Ellingsrud-Göttsche-Lehn

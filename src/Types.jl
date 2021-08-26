@@ -208,13 +208,15 @@ coeff(x::ChRingElem, exps::Vector{Int}) = coeff(x.f, exps)
 Nemo.terms(x::ChRingElem) = parent(x).(Nemo.terms(x.f))
 
 function total_degree(x::ChRingElem)
-  f = simplify(x).f
+  R = x.parent
+  f = R(x.f, reduce=true).f
   f == 0 && return -1
   max([sum(parent(x).w .* Singular.degrees(t)) for t in Singular.terms(f)]...)
 end
 
 function ishomogeneous(x::ChRingElem)
-  f = simplify(x).f
+  R = x.parent
+  f = R(x.f, reduce=true).f
   f == 0 && return true
   degs = [sum(parent(x).w .* Singular.degrees(t)) for t in Singular.terms(f)]
   all(d -> d==degs[1], degs)

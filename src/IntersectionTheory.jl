@@ -9,10 +9,10 @@ import Markdown
 import Base: +, -, *, ^, ==, div, zero, one, parent, mod, deepcopy
 import Nemo: fmpz, fmpq, ZZ, QQ
 import Nemo: dim, rank, domain, codomain, gens, det, basis, bernoulli, coeff
-import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, addeq!, MPolyElem
+import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, add!, addeq!, MPolyElem
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
-import AbstractAlgebra.Generic: Partition, subscriptify, integral, partitions, FunctionalMap
+import AbstractAlgebra.Generic: Partition, subscriptify, integral, FunctionalMap
 import AbstractAlgebra: @declare_other, set_special, get_special, expressify, promote_rule
 import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
@@ -21,8 +21,6 @@ import GAP: GapObj
 import Base: collect, length
 import Nemo: perm
 const GG = GAP.Globals
-
-import Quadmath: Float128
 
 export Nemo, Singular
 export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ

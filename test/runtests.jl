@@ -246,14 +246,12 @@ end
   @test integral(chern(symmetric_power(3, dual(S)))) == 27
   @test integral(chern(1, dual(S))^4) == 2
   @test integral(chern(2, G)^2) == 98
+  @test chern_number(G, [2, 2]) == 98
   
-  # polynomial / float weights
-  G = grassmannian(2, 4, bott=true, weights=:poly)
-  S, Q = bundles(G)
-  @test integral(chern(symmetric_power(3, dual(S)))) == 27
-  G = grassmannian(2, 4, bott=true, weights=:float)
-  S, Q = bundles(G)
-  @test integral(chern(symmetric_power(3, dual(S)))) == 27
+  # # polynomial weights
+  # G = grassmannian(2, 4, bott=true, weights=:poly)
+  # S, Q = bundles(G)
+  # @test integral(chern(symmetric_power(3, dual(S)))) == 27
 
   # flag variety
   F = flag(1, 2, 3, bott=true)
