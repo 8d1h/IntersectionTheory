@@ -132,7 +132,7 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   f = AbsVarietyHom(Bl, Y, Bl.(y), fₓ)
   Bl.struct_map = f
   if isdefined(Y, :point) Bl.point = f.pullback(Y.point) end
-  PN = proj(N) # the exceptional divisor as the projectivization of N
+  PN = proj(N, symbol=symbol, gen=-1) # the exceptional divisor as the projectivization of N
   g = PN.struct_map
   ζ = g.O1
   jˣ = vcat([-ζ * g.pullback(X(xi)) for xi in x], [g.pullback(i.pullback(f)) for f in gens(AˣY)])

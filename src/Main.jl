@@ -1133,7 +1133,7 @@ end
     proj(F::AbsBundle)
 Construct the projectivization of a bundle $F$, parametrizing 1-dimensional
 *subspaces*."""
-function proj(F::AbsBundle; symbol::String="h")
+function proj(F::AbsBundle; symbol::String="h", gen::Int=1)
   X, r = F.parent, F.rank
   !(r isa Int) && error("expect rank to be an integer")
   R = X.ring
@@ -1141,6 +1141,7 @@ function proj(F::AbsBundle; symbol::String="h")
   ord = ordering_dp(1) * R.R.ord
   # construct the ring
   R1, (h,) = PolynomialRing(X.base, syms, ordering=ord)
+  h *= 1//gen
   pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[2:end])
   pfwd = Singular.AlgebraHomomorphism(R1, R.R, pushfirst!(gens(R.R), R.R()))
   # construct the ideal
