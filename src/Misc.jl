@@ -85,7 +85,6 @@ end
 # coercions
 #
 (R::Singular.PolyRing)(q::Rational) = R(Singular.QQ(q))
-(F::Singular.N_FField)(q::Union{fmpq, Rational, Singular.n_Q}) = F(numerator(q))//F(denominator(q))
 (Z::Singular.Integers)(q::Singular.n_Q) = begin
   if denominator(q) != 1 throw(InexactError) end
   Z(numerator(q))
@@ -105,8 +104,6 @@ end
   x == cst || throw(InexactError)
   F(cst)
 end
-promote_rule(::Type{n_transExt}, ::Type{n_Q}) = Singular.n_transExt
-promote_rule(::Type{n_transExt}, ::Type{fmpq}) = Singular.n_transExt
 
 ###############################################################################
 #
