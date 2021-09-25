@@ -28,7 +28,7 @@ export total_degree, ishomogeneous, coeff
 export proj, grassmannian, flag, point, curve, variety, bundle
 export pullback, pushforward, hom
 export bundles, tangent_bundle, cotangent_bundle, canonical_bundle, canonical_class
-export exterior_power, symmetric_power, det, schur_functor
+export exterior_power, symmetric_power, det, schur_functor, principal_parts
 export dim, degree, rank, basis, intersection_matrix, dual_basis
 export simplify, simplify!, inv, base_ring, gens, domain, codomain, betti
 export euler, todd, integral, chern, segre, chi, OO, dual, ch, ctop, pontryagin

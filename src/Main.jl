@@ -560,13 +560,12 @@ function _hom(X::AbsVariety, Y::AbsVariety)
       p.codomain == Y && return p
     end
   else
-    # follow the chain of structure maps to see if we can arrive at Y
-    homs = AbsVarietyHom[]
-    while isdefined(X, :struct_map) && X != Y
-      push!(homs, X.struct_map)
-      X = X.struct_map.codomain
+    if isdefined(X, :struct_map)
+      try # follow the chain of structure maps
+        return X.struct_map * _hom(X.struct_map.codomain, Y)
+      catch
+      end
     end
-    X == Y && return reduce(*, homs)
   end
   error("no canonical homomorphism between the given varieties")
 end
@@ -744,6 +743,20 @@ function giambelli(λ::AbstractVector{Int}, F::AbsBundle)
   R = F.parent.ring
   M = [chern(λ[i]-i+j, F).f for i in 1:length(λ), j in 1:length(λ)]
   R(det(Nemo.matrix(R.R, M)))
+end
+
+@doc Markdown.doc"""
+    principal_parts(n::Int, F::AbsBundle)
+    principal_parts(n::Int, f::AbsVarietyHom, F::AbsBundle)
+Return the bundle of principal parts of degree $n$ for $F$, either absolute or
+relative to a morphism $f$.
+"""
+function principal_parts(n::Int, F::AbsBundle)
+  F * sum(symmetric_power(k, cotangent_bundle(parent(F))) for k in 0:n)
+end
+
+function principal_parts(n::Int, f::AbsVarietyHom, F::AbsBundle)
+  F * sum(symmetric_power(k, cotangent_bundle(f)) for k in 0:n)
 end
 
 ###############################################################################
