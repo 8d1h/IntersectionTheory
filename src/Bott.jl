@@ -106,7 +106,9 @@ mutable struct TnVariety{P} <: TnVarietyT{P}
   end
 end
 
-euler(X::TnVariety) = sum(1//ZZ(e) for (p,e) in X.points) # special case of Bott's formula
+Base.show(io::IO, X::TnVariety) = print(io, "TnVariety of dim ", X.dim, " with ", length(X.points), " fixed points")
+
+euler(X::TnVariety) = sum(1//ZZ(e) for (p, e) in X.points) # special case of Bott's formula
 tangent_bundle(X::TnVariety) = X.T
 cotangent_bundle(X::TnVariety) = dual(X.T)
 bundles(X::TnVariety) = X.bundles
@@ -188,7 +190,7 @@ function _integral(F::TnBundle, pp::Vector)
   extra = [(fmpz(), fmpz(), fmpq()) for _ in 1:Threads.nthreads()]
   idx = union(pp...) # only compute the Chern classes needed
   # the main loop using Bott's formula
-  Threads.@threads for (p,e) in X.points
+  Threads.@threads for (p, e) in X.points
     Fp = F(p)
     id = Threads.threadid()
     cherns = chern_ans[id]

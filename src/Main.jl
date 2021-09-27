@@ -323,9 +323,9 @@ Construct a generic variety of dimension $n$ and define its tangent bundle.
 
 Return the variety.
 """
-function variety(n::Int; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
+function variety(n::Int; symbol::String="c", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   n == 0 && return point(base=base, param=param)
-  ans = variety(n, [n=>"c"], base=base, param=param)
+  ans = variety(n, [n=>symbol], base=base, param=param)
   X, (T,) = ans[1], ans[2]
   param = length(ans) == 3 ? ans[3] : []
   X.T = T
@@ -869,10 +869,9 @@ function _expp(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   n = truncate
   comps = x[0:n]
   p = [(-1)^i*factorial(ZZ(i))*comps[i+1] for i in 0:n]
-  e = repeat([zero(x)], n+1)
-  e[1] = one(x)
+  e = [one(x)]
   for i in 1:n
-    e[i+1] = -1//ZZ(i) * sum(p[j+1] * e[i-j+1] for j in 1:i)
+    push!(e, -1//i * sum(p[j+1] * e[i-j+1] for j in 1:i))
   end
   simplify(sum(e))
 end
@@ -882,9 +881,9 @@ function _logg(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   n = truncate
   n == 0 && return zero(x)
   e = x[1:n]
-  p = pushfirst!(repeat([zero(x)], n-1), -e[1])
+  p = [-e[1]]
   for i in 1:n-1
-    p[i+1] = -ZZ(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i)
+    push!(p, -(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i))
   end
   simplify(sum((-1)^i//factorial(ZZ(i))*p[i] for i in 1:n))
 end
@@ -893,11 +892,10 @@ function Base.exp(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert x[0] == 0
   n = truncate == nothing ? total_degree(x) : truncate
   comps = x[0:n]
-  p = [ZZ(i) * comps[i+1] for i in 0:n]
-  e = repeat([zero(x)], n+1)
-  e[1] = one(x)
+  p = [i * comps[i+1] for i in 0:n]
+  e = [one(x)]
   for i in 1:n
-    e[i+1] = 1//ZZ(i) * sum(p[j+1] * e[i-j+1] for j in 1:i)
+    push!(e, 1//i * sum(p[j+1] * e[i-j+1] for j in 1:i))
   end
   simplify(sum(e))
 end
@@ -906,11 +904,11 @@ function Base.log(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   @assert x[0] == 1
   n = truncate == nothing ? total_degree(x) : truncate
   e = x[1:n]
-  p = pushfirst!(repeat([zero(x)], n-1), e[1])
+  p = [e[1]]
   for i in 1:n-1
-    p[i+1] = ZZ(i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i)
+    push!(p, (i+1)*e[i+1] - sum(e[j] * p[i-j+1] for j in 1:i))
   end
-  simplify(sum(1//ZZ(i)*p[i] for i in 1:n))
+  simplify(sum(1//i*p[i] for i in 1:n))
 end
 
 Base.sqrt(x::ChRingElem) = exp(1//2*log(x))
@@ -919,6 +917,7 @@ function Base.inv(x::ChRingElem; truncate=get_special(parent(x), :truncate))
   n = truncate == nothing ? total_degree(x) : truncate
   S, t = Nemo.PowerSeriesRing(parent(x), n+1, "t")
   comps = x[0:n]
+  comps[1] == 0 && error("element is not invertible")
   c = sum(t^i * comps[i+1] for i in 0:n)
   s = inv(c)
   sum(coeff(s, i) for i in 0:n)
@@ -1177,6 +1176,9 @@ function proj(F::AbsBundle; symbol::String="h", gen::Int=1)
   PF.struct_map = p
   set_special(PF, :description => "Projectivization of $F")
   set_special(PF, :grassmannian => :relative)
+  if get_special(X, :alg) == true
+    set_special(PF, :alg => true)
+  end
   return PF
 end
 
@@ -1333,6 +1335,9 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   set_special(Fl, :description => "Relative flag variety Flag$(tuple(dims...)) for $F")
   set_special(Fl, :section => section)
   if l == 2 set_special(Fl, :grassmannian => :relative) end
+  if get_special(X, :alg) == true
+    set_special(Fl, :alg => true)
+  end
   return Fl
 end
 

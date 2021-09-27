@@ -6,7 +6,7 @@ import Singular
 import GAP
 import Markdown
 
-import Base: +, -, *, ^, ==, div, zero, one, parent, mod, deepcopy
+import Base: +, -, *, ^, ==, div, zero, one, parent, mod, copy, deepcopy
 import Nemo: fmpz, fmpq, ZZ, QQ
 import Nemo: dim, rank, domain, codomain, gens, det, basis, bernoulli, coeff
 import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, add!, addeq!, MPolyElem
