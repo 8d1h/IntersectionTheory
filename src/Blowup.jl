@@ -102,7 +102,7 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   end
 
   # 2) relations for AˣX as an AˣY-module
-  for r in E' * fˣ.(M) push!(rels, r) end
+  for r in transpose(E) * fˣ.(M) push!(rels, r) end
 
   # 3) jₓx ⋅ jₓy = -jₓ(x⋅y⋅ζ)
   # recall that E[i] = jₓgˣ(x[i])
@@ -157,11 +157,11 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   # chern(Bl.T) can be readily computed from its Chern character, but the following is faster
   α = sum(sum((binomial(ZZ(d-j), ZZ(k)) - binomial(ZZ(d-j), ZZ(k+1))) * ζ^k for k in 0:d-j) * g.pullback(chern(j, N)) for j in 0:d)
   Bl.T.chern = simplify(f.pullback(chern(Y.T)) + j.pushforward(g.pullback(chern(X.T)) * α))
-  set_special(PN, :projections => [j, g])
-  set_special(Bl, :exceptional_divisor => PN)
-  set_special(Bl, :description => "Blowup of $Y with center $X")
-  if get_special(X, :alg) == true && get_special(Y, :alg) == true
-    set_special(Bl, :alg => true)
+  set_attribute!(PN, :projections => [j, g])
+  set_attribute!(Bl, :exceptional_divisor => PN)
+  set_attribute!(Bl, :description => "Blowup of $Y with center $X")
+  if get_attribute(X, :alg) == true && get_attribute(Y, :alg) == true
+    set_attribute!(Bl, :alg => true)
   end
   return Bl, PN
 end
@@ -176,10 +176,10 @@ function blowup_points(n::Int, X::AbsVariety; symbol::String="e")
   for i in 1:n
     Bl = blowup(point(base = X.base) → Bl, symbol=symbs[i])[1]
   end
-  set_special(Bl, :description => "Blowup of $X at $n points")
+  set_attribute!(Bl, :description => "Blowup of $X at $n points")
   Bl.struct_map = hom(Bl, X)
-  if get_special(X, :alg) == true
-    set_special(Bl, :alg => true)
+  if get_attribute(X, :alg) == true
+    set_attribute!(Bl, :alg => true)
   end
   return Bl
 end
@@ -224,7 +224,7 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   end
 
   # 2) relations for AˣX as an AˣY-module
-  for r in E' * fˣ.(M) push!(rels, r) end
+  for r in transpose(E) * fˣ.(M) push!(rels, r) end
 
   # 3) jₓx ⋅ jₓy = jₓ(x⋅y⋅c)
   for j in 1:n, k in j:n
@@ -239,13 +239,15 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   AˣY⁺ = ChRing(RY⁺, vcat(degs, AˣY.w), Ideal(RY⁺, rels...))
   Y⁺ = AbsVariety(Y.dim, AˣY⁺)
   # trim!(Y⁺.ring) TODO is this necessary?
-  set_special(Y⁺, :description => "$Y")
+  set_attribute!(Y⁺, :description => "$Y")
   fₓ = map_from_func(x -> error("not defined"), Y⁺.ring, Y.ring)
   f = AbsVarietyHom(Y⁺, Y, Y⁺.(y), fₓ)
   Y⁺.struct_map = f
   Y⁺.T = pullback(f, Y.T)
   f.T = AbsBundle(Y⁺, Y⁺(0)) # there is no relative tangent bundle
-  Y⁺.point = f.pullback(Y.point)
+  if isdefined(Y, :point)
+    Y⁺.point = f.pullback(Y.point)
+  end
   if isdefined(Y, :O1) Y⁺.O1 = f.pullback(Y.O1) end
   jˣ = vcat(X.(x) .* c, [i.pullback(f) for f in gens(AˣY)])
   j_ = map_from_func(x -> Y⁺(jₓ(x)), X.ring, Y⁺.ring)

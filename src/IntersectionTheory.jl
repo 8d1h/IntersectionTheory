@@ -13,7 +13,7 @@ import Nemo: Ring, RingElem, RingElement, MPolyRing, mul!, add!, addeq!, MPolyEl
 import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, constant_coefficient
 import Nemo: map_from_func
 import AbstractAlgebra.Generic: Partition, subscriptify, integral, FunctionalMap
-import AbstractAlgebra: @declare_other, set_special, get_special, expressify, promote_rule
+import AbstractAlgebra: @attributes, set_attribute!, get_attribute, expressify, promote_rule
 import Singular: PolynomialRing, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
 import Singular: ordering_dp, ordering_wp

@@ -10,8 +10,8 @@ end
 
 function ^(x::ChRingElem, w::WeylGroupElem)
   W = w.parent
-  @assert weyl_group(get_special(parent(x), :variety)) == W
-  get_special(W, :action)(w, x.f)
+  @assert weyl_group(get_attribute(parent(x), :variety)) == W
+  get_attribute(W, :action)(w, x.f)
 end
 
 # XXX the GAP code in Sage is faster
@@ -27,7 +27,7 @@ function _factor(w::WeylGroupElem)
 end
 
 function basis(W::WeylGroup)
-  if get_special(W, :basis) === nothing
+  if get_attribute(W, :basis) === nothing
     ans = Dict{Int, Vector{WeylGroupElem}}()
     for w in collect(W)
       l = length(w)
@@ -38,9 +38,9 @@ function basis(W::WeylGroup)
       end
     end
     l_max = max(collect(keys(ans))...)
-    set_special(W, :basis => [ans[i] for i in 0:l_max])
+    set_attribute!(W, :basis => [ans[i] for i in 0:l_max])
   end
-  get_special(W, :basis)
+  get_attribute(W, :basis)
 end
 
 function betti(W::WeylGroup)
@@ -52,7 +52,7 @@ function longest_element(W::WeylGroup)
 end
 
 function weyl_group(F::AbsVariety)
-  get_special(F, :weyl_group)
+  get_attribute(F, :weyl_group)
 end
 
 # This uses the description in [Bernstein, Gel'fand, Gel'fand - Schubert cells and cohomology of the spaces G/P].
@@ -68,7 +68,7 @@ function schubert_class(F::AbsVariety, w::WeylGroupElem)
   W = weyl_group(F)
   word = _factor(w)
   l = length(word)
-  roots = get_special(F, :roots)
+  roots = get_attribute(F, :roots)
   ans = F(0)
   for (x, y) in zip(basis(l, F), dual_basis(l, F))
     Ax = x
@@ -103,7 +103,7 @@ function homogeneous_variety(G::String, I=nothing; symbol::String="c", base::Rin
     X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
     X.T = sum(dual(X.bundles[i]) * ((2n+1) * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - symmetric_power(2, dual(sum(X.bundles)))
     X.point = X(prod(1//2 * (-1)^i * w[i]^(2i-1) for i in 1:n))
-    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n]))
+    set_attribute!(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n]))
   elseif typ == 'C'
     rels = [sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n]
     AˣX.I = std(Ideal(R, rels))
@@ -111,7 +111,7 @@ function homogeneous_variety(G::String, I=nothing; symbol::String="c", base::Rin
     X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
     X.T = sum(dual(X.bundles[i]) * (2n * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - exterior_power(2, dual(sum(X.bundles)))
     X.point = X(prod((-1)^i * w[i]^(2i-1) for i in 1:n))
-    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], 2w[n]))
+    set_attribute!(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], 2w[n]))
   elseif typ == 'D'
     rels = push!([sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n], prod(w))
     AˣX.I = std(Ideal(R, rels))
@@ -119,8 +119,8 @@ function homogeneous_variety(G::String, I=nothing; symbol::String="c", base::Rin
     X.bundles = [AbsBundle(X, 1, w[i]) for i in 1:n]
     X.T = sum(dual(X.bundles[i]) * (2n * OO(X) - sum(X.bundles[j] for j in 1:i)) for i in 1:n) - symmetric_power(2, dual(sum(X.bundles)))
     X.point = 2X(prod(1//2 * (-w[i]^2)^(i-1) for i in 1:n))
-    set_special(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n-1] + w[n]))
+    set_attribute!(X, :roots => -push!([w[i] - w[i+1] for i in 1:n-1], w[n-1] + w[n]))
   end
-  set_special(X, :weyl_group => weyl_group(G))
+  set_attribute!(X, :weyl_group => weyl_group(G))
   return param == [] ? X : (X, param)
 end

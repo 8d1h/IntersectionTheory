@@ -140,10 +140,10 @@ end
 chi(p::Int, x::CobordRingElem) = integral(x, chi(p, variety(dim(x))))
 
 function _generic_product_chern_numbers(m::Int, n::Int)
-  cache = get_special(Omega, :generic_product_chern_numbers)
+  cache = get_attribute(Omega, :generic_product_chern_numbers)
   if cache == nothing
     cache = Dict{Tuple{Int, Int}, Dict{Partition, Dict{Tuple{Partition, Partition}, fmpz}}}()
-    set_special(Omega, :generic_product_chern_numbers => cache)
+    set_attribute!(Omega, :generic_product_chern_numbers => cache)
   end
   mn = (m, n)
   if !(mn in keys(cache))
@@ -157,7 +157,7 @@ function _generic_product_chern_numbers(m::Int, n::Int)
       ans[p] = Dict{Tuple{Partition, Partition}, fmpz}()
       Cp = prod(C[i] for i in p).f
       for (c,e) in zip(Nemo.coefficients(Cp), Nemo.exponent_vectors(Cp))
-        if collect(1:m)' * e[1:m] == m
+        if transpose(collect(1:m)) * e[1:m] == m
           p1 = Partition([i for i in m:-1:1 for _ in 1:e[i]])
           p2 = Partition([i for i in n:-1:1 for _ in 1:e[m+i]])
           ans[p][(p1,p2)] = c
@@ -187,10 +187,10 @@ function _product_chern_numbers(Xs::Vector)
 end
 
 function _chern_numbers_of_prod_Pn(n::Int)
-  B = get_special(Omega, :chern_numbers_of_prod_Pn)
+  B = get_attribute(Omega, :chern_numbers_of_prod_Pn)
   if B == nothing
     B = Dict{Int, Nemo.fmpq_mat}()
-    set_special(Omega, :chern_numbers_of_prod_Pn => B)
+    set_attribute!(Omega, :chern_numbers_of_prod_Pn => B)
   end
   if !(n in keys(B))
     P = partitions(n)
@@ -202,10 +202,10 @@ function _chern_numbers_of_prod_Pn(n::Int)
 end
 
 function _inv_chern_numbers_of_prod_Pn(n::Int)
-  B = get_special(Omega, :inv_chern_numbers_of_prod_Pn)
+  B = get_attribute(Omega, :inv_chern_numbers_of_prod_Pn)
   if B == nothing
     B = Dict{Int, Nemo.fmpq_mat}()
-    set_special(Omega, :inv_chern_numbers_of_prod_Pn => B)
+    set_attribute!(Omega, :inv_chern_numbers_of_prod_Pn => B)
   end
   if !(n in keys(B))
     B[n] = inv(_chern_numbers_of_prod_Pn(n))
@@ -254,7 +254,7 @@ end
 function _H(n::Int, c₁²::T, c₂::U; weights=:int) where {T <: RingElement, U <: RingElement}
   F = parent(c₁² + c₂)
   if F isa AbstractAlgebra.Integers F = QQ end
-  a1, a2 = Nemo.solve(Nemo.matrix(F, [9 3; 8 4]'), Nemo.matrix(F, [c₁² c₂]'))
+  a1, a2 = Nemo.solve_left(Nemo.matrix(F, [9 3; 8 4]), Nemo.matrix(F, [c₁² c₂]))
   O = cobordism_ring(base=F)
   R, (z,) = graded_ring(O, ["z"], :truncate => n)
   HP2    = a1 == 0 ? R(1) : 1 + sum(O(hilb_P2(k, weights=weights))*z^k for k in 1:n)

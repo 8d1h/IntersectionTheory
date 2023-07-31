@@ -84,7 +84,6 @@ end
 #
 # coercions
 #
-(R::Singular.PolyRing)(q::Rational) = R(Singular.QQ(q))
 (Z::Singular.Integers)(q::Singular.n_Q) = begin
   if denominator(q) != 1 throw(InexactError) end
   Z(numerator(q))

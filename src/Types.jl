@@ -24,20 +24,19 @@ Base.show(io::IO, f::VarietyHom) = print(io, "$(typeof(f).name.name) from $(f.do
 The type of a graded ring, possibly equipped with an ideal to represent a
 quotient ring.
 """
-mutable struct ChRing <: Ring
+@attributes mutable struct ChRing <: Ring
   R::MPolyRing
   w::Vector{Int}
   I::sideal
-  @declare_other
   function ChRing(R::MPolyRing, w::Vector{Int}, opts::Pair...)
     R = new(R, w)
-    for o in opts set_special(R, o) end
+    for o in opts set_attribute!(R, o) end
     return R
   end
   function ChRing(R::MPolyRing, w::Vector{Int}, I::sideal, opts::Pair...)
     I = std(I)
     R = new(R, w, I)
-    for o in opts set_special(R, o) end
+    for o in opts set_attribute!(R, o) end
     return R
   end
 end
@@ -46,10 +45,9 @@ end
     ChRingElem(R::ChRing, f::RingElem)
 The type of an element of a `ChRing`.
 """
-mutable struct ChRingElem <: RingElem
+@attributes mutable struct ChRingElem <: RingElem
   parent::ChRing
   f::RingElem
-  @declare_other
   function ChRingElem(R::ChRing, f::RingElem)
     new(R, R.R(f))
   end
@@ -59,11 +57,10 @@ end
 #
 # CobordRing and CobordRingElem
 #
-mutable struct CobordRing <: Ring
+@attributes mutable struct CobordRing <: Ring
   base::Ring
   n::Int
   R::ChRing
-  @declare_other
   function CobordRing(; base::Ring=QQ)
     new(base, 0)
   end
@@ -82,10 +79,10 @@ const Omega = CobordRing()
 Return $\Omega$, the (complex) cobordism ring with rational coefficients."""
 function cobordism_ring(; base::Ring = QQ)
   base == QQ && return Omega
-  cache = get_special(Omega, :base)
+  cache = get_attribute(Omega, :base)
   if cache == nothing
     cache = Dict{Ring, CobordRing}()
-    set_special(Omega, :base => cache)
+    set_attribute!(Omega, :base => cache)
   end
   if !(base in keys(cache))
     O = CobordRing(base = base)
@@ -172,8 +169,19 @@ Nemo.elem_type(::Type{ChRing}) = ChRingElem
 
 # for now _coerce does nothing
 function _coerce(x::ChRingElem, y::ChRingElem)
-  @assert x.parent == y.parent
-  x, y
+  A, B = x.parent, y.parent
+  A == B && return x, y
+  X = get_attribute(A, :variety)
+  Y = get_attribute(B, :variety)
+  try
+    return x, pullback(_hom(X, Y), y)
+  catch
+    try
+      return pullback(_hom(Y, X), x), y
+    catch
+      error("the sheaves are not on compatible varieties")
+    end
+  end
 end
 
 Base.parent(x::ChRingElem) = x.parent
@@ -235,7 +243,7 @@ Nemo.isunit(x::ChRingElem) = Nemo.isunit(simplify(x)[0].f)
 
 function Base.getindex(x::ChRingElem, n::Int)
   R = x.parent
-  d = get_special(R, :truncate)
+  d = get_attribute(R, :truncate)
   d !== nothing && n > d && return R(0)
   f = R(x.f, reduce=true).f
   ans = R(0)
@@ -250,7 +258,7 @@ function Base.getindex(x::ChRingElem, I::UnitRange)
   R = x.parent
   f = R(x.f, reduce=true).f
   ans = repeat([R(0)], length(I))
-  d = get_special(R, :truncate)
+  d = get_attribute(R, :truncate)
   stop = (d === nothing) ? I.stop : min(I.stop, d)
   for t in Singular.terms(f)
     d = R.w' * Singular.degrees(t)
@@ -262,7 +270,7 @@ end
 
 function simplify(x::ChRingElem)
   R = x.parent
-  n = get_special(R, :truncate)
+  n = get_attribute(R, :truncate)
   # no dimension restriction
   n === nothing && return R(x.f, reduce=true)
   # otherwise keep only terms in degree ≤ n
@@ -274,7 +282,7 @@ simplify!(x::ChRingElem) = (x.f = simplify(x).f; x)
 
 # add all the relations to a Chow ring due to dimension
 function trim!(R::ChRing)
-  d = get_special(R, :truncate)
+  d = get_attribute(R, :truncate)
   if isdefined(R, :I)
     gI = gens(R.I)
     # check that I is homogeneous, using the weights of R
@@ -320,7 +328,7 @@ graded_ring(F::Ring, symb::Vector{String}, opts::Pair...) = graded_ring(F, symb,
 function graded_ring(F::Ring, symb::Vector{String}, w::Vector{Int}, opts::Pair...)
   R = Nemo.PolynomialRing(F, symb)[1]
   S = ChRing(R, w)
-  for o in opts set_special(S, o) end
+  for o in opts set_attribute!(S, o) end
   S, gens(S)
 end
 
@@ -342,12 +350,11 @@ function cyc(cycles::AbstractVector{T}...) where T <: Union{Base.Integer, fmpz}
   prod([GG.CycleFromList(GAP.julia_to_gap(Int.(c))) for c in cycles])
 end
 
-mutable struct WeylGroup <: GAPGroup
+@attributes mutable struct WeylGroup <: GAPGroup
   X::GapObj
   gens::Vector{GapObj} # generators
   p::GapObj # the presentation
   typ::Char
-  @declare_other
   function WeylGroup(str::String, I=nothing; implementation::Symbol=:perm)
     typ, n = str[1], parse(Int, str[2:end])
     # For type A, the permutation representation is meaningful: (i,i+1) is the
@@ -405,7 +412,7 @@ mutable struct WeylGroup <: GAPGroup
       action = nothing
     #   error("not implemented")
     end
-    set_special(W, :action => action)
+    set_attribute!(W, :action => action)
     return W
   end
 end

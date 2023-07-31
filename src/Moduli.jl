@@ -103,8 +103,8 @@ function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=QQ, param::Union{Strin
   X.T = hom(F, E * q) - (hom(E, E) + hom(F, F)) + OO(X)
   X.point = chern(X.dim, (m*q-n)*E - m*F)
   X.bundles = [F, E]
-  set_special(X, :alg => true)
-  set_special(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on a $(q)-dim vector space")
+  set_attribute!(X, :alg => true)
+  set_attribute!(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on a $(q)-dim vector space")
   return param == [] ? X : (X, param)
 end
 
@@ -138,7 +138,7 @@ function matrix_moduli(V::AbsBundle, m::Int, n::Int)
   X.T = pullback(p, S.T) + p.T
   X.point = pullback(p, S.point) * chern(X.dim - S.dim, (m*q-n)*E - m*F)
   X.bundles = [F, E]
-  set_special(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on $V")
+  set_attribute!(X, :description => "Moduli space of $(n)x$(m) matrices of linear forms on $V")
   X
 end
 

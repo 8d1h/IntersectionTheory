@@ -31,7 +31,7 @@ using Test
   @test (x + x^2 + y)[2] == x^2 + y
   @test ishomogeneous(x^2 + y)
   @test !ishomogeneous(x + y)
-  Nemo.AbstractAlgebra.set_special(A, :truncate => 2)
+  Nemo.AbstractAlgebra.set_attribute!(A, :truncate => 2)
   trim!(A)
   @test simplify(x^3) == 0
 
@@ -61,6 +61,12 @@ end
   @test euler(C) == 2 - 2g
   @test rank(OO(C) * g) == g
   @test rank(symmetric_power(g, 2OO(C))) == g + 1
+
+  # degree-0 variable as parameter
+  X, (n,c1,c2) = variety(2, ["n", "c1", "c2"], [0,1,2])
+  X.T = bundle(X, 2, 1+c1+c2)
+  @test rank(symmetric_power(n, X.T)) == n + 1
+  @test_throws ArgumentError rank(symmetric_power(c1, X.T))
 
   # generic variety with bundles
   X, (A, B) = variety(2, [3=>"a", 3=>"b"])
