@@ -74,10 +74,10 @@ on a $q$-dimensional vector space, or relative to a rank-$q$ vector bundle $V$.
 function matrix_moduli(q::Int, m::Int, n::Int; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   @assert gcd(m, n) == 1 # otherwise there will be strictly semistable points
   base, param = _parse_base(base, param)
-  Rᵂ, ef = PolynomialRing(base, vcat(_parse_symbol("e", 1:n), _parse_symbol("f", 1:m)))
+  Rᵂ, ef = polynomial_ring(base, vcat(_parse_symbol("e", 1:n), _parse_symbol("f", 1:m)))
   e, f = ef[1:n], ef[n+1:end]
   A = ChRing(Rᵂ, vcat(collect(1:n), collect(1:m)))
-  R, ab = PolynomialRing(base, vcat(_parse_symbol("a", 1:n), _parse_symbol("b", 1:m)))
+  R, ab = polynomial_ring(base, vcat(_parse_symbol("a", 1:n), _parse_symbol("b", 1:m)))
   a, b = ab[1:n], ab[n+1:end]
   B = ChRing(R, repeat([1], n+m))
   syma = [sum(prod(a[j] for j in c) for c in combinations(n, i)) for i in 1:n]

@@ -17,7 +17,7 @@ function _pushfwd(f::ChAlgHom)
   # the ring for the graph of f
   # ord = ordering_dp(b) * ordering_dp(a)
   ord = ordering_wp(B.w) * ordering_wp(A.w)
-  R, ba = PolynomialRing(base, vcat(symsB, symsA), ordering=ord)
+  R, ba = polynomial_ring(base, vcat(symsB, symsA), ordering=ord)
   AtoR = Singular.AlgebraHomomorphism(A.R, R, ba[b+1:end])
   BtoR = Singular.AlgebraHomomorphism(B.R, R, ba[1:b])
   RtoA = Singular.AlgebraHomomorphism(R, A.R, vcat(repeat([A.R()], b), gens(A.R)))
@@ -90,7 +90,7 @@ function blowup(i::AbsVarietyHom; symbol::String="e")
   # the last variable E is the class of the exceptional divisor
   syms = vcat(push!(_parse_symbol(symbol, 1:n-1), symbol), string.(gens(RY)))
   degs = [total_degree(X(x[i])) + 1 for i in 1:n]
-  RBl = PolynomialRing(Y.base, syms)[1]
+  RBl = polynomial_ring(Y.base, syms)[1]
   E, y = gens(RBl)[1:n], gens(RBl)[n+1:end]
   fˣ = Singular.AlgebraHomomorphism(RY, RBl, y)
   jₓgˣ = x -> sum(E .* fˣ.(pf(x.f)))
@@ -212,7 +212,7 @@ function _inclusion(i::AbsVarietyHom; symbol::String="x")
   # similar to blowup: the last variable is the class of X in Y
   syms = vcat(push!(_parse_symbol(symbol, 1:n-1), symbol), string.(gens(RY)))
   degs = [total_degree(X(x[i])) + d for i in 1:n]
-  RY⁺ = PolynomialRing(Y.base, syms)[1]
+  RY⁺ = polynomial_ring(Y.base, syms)[1]
   E, y = gens(RY⁺)[1:n], gens(RY⁺)[n+1:end]
   fˣ = Singular.AlgebraHomomorphism(RY, RY⁺, y)
   jₓ = x -> sum(E .* fˣ.(pf(x.f)))

@@ -289,7 +289,7 @@ Return the variety and the list of classes.
 function variety(n::Int, symbols::Vector{String}, degs::Vector{Int}; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   base, param = _parse_base(base, param)
   @assert length(symbols) > 0
-  R = ChRing(PolynomialRing(base, symbols)[1], degs)
+  R = ChRing(polynomial_ring(base, symbols)[1], degs)
   X = AbsVariety(n, R)
   return param == [] ? (X, gens(R)) : (X, gens(R), param)
 end
@@ -539,7 +539,7 @@ function hilbert_polynomial(F::AbsBundle)
   !isdefined(F.parent, :O1) && error("no polarization is specified for the variety")
   X, O1 = F.parent, F.parent.O1
   # extend the coefficient ring to QQ(t)
-  Qt, (t,) = PolynomialRing(X.base, ["t"])
+  Qt, (t,) = polynomial_ring(X.base, ["t"])
   Qt = Nemo.FractionField(Qt)
   sQt = Singular.CoefficientRing(Qt)
   toR = x -> Singular.change_base_ring(sQt, x)
@@ -607,7 +607,7 @@ function *(X::AbsVariety, Y::AbsVariety)
   A, B = X.ring, Y.ring
   symsA, symsB = string.(gens(A.R)), string.(gens(B.R))
   a = length(symsA)
-  R, x = PolynomialRing(base, vcat(symsA, symsB))
+  R, x = polynomial_ring(base, vcat(symsA, symsB))
   AtoR = Singular.AlgebraHomomorphism(A.R, R, x[1:a])
   BtoR = Singular.AlgebraHomomorphism(B.R, R, x[a+1:end])
   IA = Ideal(R, isdefined(A, :I) ? AtoR.(gens(A.I)) : [R()])
@@ -1110,7 +1110,7 @@ end
 Construct a point as an abstract variety."""
 function point(; base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   base, param = _parse_base(base, param)
-  R, (p,) = PolynomialRing(base, ["p"])
+  R, (p,) = polynomial_ring(base, ["p"])
   I = Ideal(R, [p])
   pt = AbsVariety(0, ChRing(R, [1], I))
   pt.point = pt(1)
@@ -1127,7 +1127,7 @@ Construct an abstract projective space of dimension $n$, parametrizing
 1-dimensional *subspaces* of a vector space of dimension $n+1$."""
 function proj(n::Int; symbol::String="h", base::Ring=QQ, param::Union{String, Vector{String}}=String[])
   base, param = _parse_base(base, param)
-  R, (h,) = PolynomialRing(base, [symbol])
+  R, (h,) = polynomial_ring(base, [symbol])
   I = Ideal(R, [h^(n+1)])
   AˣP = ChRing(R, [1], I)
   P = AbsVariety(n, AˣP)
@@ -1158,7 +1158,7 @@ function proj(F::AbsBundle; symbol::String="h", gen::Int=1)
   syms = vcat([symbol], string.(gens(R.R)))
   ord = ordering_dp(1) * R.R.ord
   # construct the ring
-  R1, (h,) = PolynomialRing(X.base, syms, ordering=ord)
+  R1, (h,) = polynomial_ring(X.base, syms, ordering=ord)
   h *= 1//gen
   pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[2:end])
   pfwd = Singular.AlgebraHomomorphism(R1, R.R, pushfirst!(gens(R.R), R.R()))
@@ -1207,7 +1207,7 @@ function abs_grassmannian(k::Int, n::Int; symbol::String="c", base::Ring=QQ, par
   @assert k < n
   d = k*(n-k)
   base, param = _parse_base(base, param)
-  R, c = PolynomialRing(base, _parse_symbol(symbol, 1:k))
+  R, c = polynomial_ring(base, _parse_symbol(symbol, 1:k))
   AˣGr = ChRing(R, collect(1:k))
   inv_c = AˣGr(sum((-sum(c))^i for i in 1:n)) # this is c(Q) since c(S)⋅c(Q) = 1
   # Q is of rank n-k: the vanishing of Chern classes in higher degrees provides all the relations for the Chow ring
@@ -1257,7 +1257,7 @@ function abs_flag(dims::Vector{Int}; symbol::String="c", base::Ring=QQ, param::U
   base, param = _parse_base(base, param)
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]...)
   ord = prod(ordering_dp(r) for r in ranks)
-  R = PolynomialRing(base, syms, ordering=ord)[1]
+  R = polynomial_ring(base, syms, ordering=ord)[1]
   AˣFl = ChRing(R, vcat([collect(1:r) for r in ranks]...))
   c = pushfirst!([1+sum(gens(R)[dims[i]+1:dims[i+1]]) for i in 1:l-1], 1+sum(gens(R)[1:dims[1]]))
   Rx, x = R["x"]
@@ -1307,7 +1307,7 @@ function flag(dims::Vector{Int}, F::AbsBundle; symbol::String="c")
   R = X.ring
   syms = vcat([_parse_symbol(symbol, i, 1:r) for (i,r) in enumerate(ranks)]..., string.(gens(R.R)))
   ord = prod(ordering_dp(r) for r in ranks) * X.ring.R.ord
-  R1 = PolynomialRing(X.base, syms, ordering=ord)[1]
+  R1 = polynomial_ring(X.base, syms, ordering=ord)[1]
   pback = Singular.AlgebraHomomorphism(R.R, R1, gens(R1)[n+1:end])
   pfwd = Singular.AlgebraHomomorphism(R1, R.R, vcat(repeat([R.R()], n), gens(R.R)))
   AˣFl = ChRing(R1, vcat([collect(1:r) for r in ranks]..., R.w), :truncate => X.dim+d)

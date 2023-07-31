@@ -3,7 +3,7 @@ using Test
 
 @testset "ChRing" begin
 
-  R, (x0,) = PolynomialRing(Singular.QQ, ["x"])
+  R, (x0,) = polynomial_ring(Singular.QQ, ["x"])
   A = IntersectionTheory.ChRing(R, [1])
   @test A isa IntersectionTheory.ChRing
   @test A(1) isa IntersectionTheory.ChRingElem
@@ -24,7 +24,7 @@ using Test
   @test simplify!(x3) == 0
   @test x3.f == 0
   
-  R, (x0, y0) = PolynomialRing(Singular.QQ, ["x", "y"])
+  R, (x0, y0) = polynomial_ring(Singular.QQ, ["x", "y"])
   A = IntersectionTheory.ChRing(R, [1, 2])
   x, y = gens(A)
   @test total_degree(y) == 2
@@ -284,8 +284,8 @@ end
 end
 
 @testset "Pushfwd" begin
-  A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [3,3,3,3])
-  B = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["s","t"])[1], [1,1])
+  A = IntersectionTheory.ChRing(polynomial_ring(Singular.QQ, ["x","y","z","w"])[1], [3,3,3,3])
+  B = IntersectionTheory.ChRing(polynomial_ring(Singular.QQ, ["s","t"])[1], [1,1])
   s, t = gens(B)
   f = IntersectionTheory.ChAlgHom(A, B, [s^3,s^2*t,s*t^2,t^3]) # twisted cubic
   M, g, pf = IntersectionTheory._pushfwd(f)
@@ -293,8 +293,8 @@ end
   x = s^3 + 5s*t + t^20 # random element from B
   @test sum(g .* f.salg.(pf(x.f))) == x.f
    
-  A = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["x","y","z","w"])[1], [4,4,2,1])
-  B = IntersectionTheory.ChRing(PolynomialRing(Singular.QQ, ["s","t","u"])[1], [1,1,1])
+  A = IntersectionTheory.ChRing(polynomial_ring(Singular.QQ, ["x","y","z","w"])[1], [4,4,2,1])
+  B = IntersectionTheory.ChRing(polynomial_ring(Singular.QQ, ["s","t","u"])[1], [1,1,1])
   s, t, u = gens(B)
   f = IntersectionTheory.ChAlgHom(A, B, [s^4+u^4,s*t^2*u,s^2-t^2-u^2,t]) # random morphism
   M, g, pf = IntersectionTheory._pushfwd(f)

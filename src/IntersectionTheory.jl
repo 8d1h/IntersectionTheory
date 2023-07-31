@@ -14,7 +14,7 @@ import Nemo: leading_coefficient, total_degree, ishomogeneous, base_ring, consta
 import Nemo: map_from_func
 import AbstractAlgebra.Generic: Partition, subscriptify, integral, FunctionalMap
 import AbstractAlgebra: @attributes, set_attribute!, get_attribute, expressify, promote_rule
-import Singular: PolynomialRing, Ideal, FunctionField
+import Singular: polynomial_ring, Ideal, FunctionField
 import Singular: std, betti, sideal, n_Q, n_transExt, spoly
 import Singular: ordering_dp, ordering_wp
 import GAP: GapObj
@@ -23,7 +23,7 @@ import Nemo: perm
 const GG = GAP.Globals
 
 export Nemo, Singular
-export QQ, FunctionField, PolynomialRing # QQ is Nemo.QQ
+export QQ, FunctionField, polynomial_ring # QQ is Nemo.QQ
 export total_degree, ishomogeneous, coeff
 export proj, grassmannian, flag, point, curve, variety, bundle
 export pullback, pushforward, hom

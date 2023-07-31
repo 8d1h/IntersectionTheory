@@ -94,7 +94,7 @@ function homogeneous_variety(G::String, I=nothing; symbol::String="c", base::Rin
   typ == 'A' && return flag(collect(1:n+1)..., base=base, symbol=symbol)
   syms = _parse_symbol(symbol, 1:n)
   ord = prod(ordering_dp(1) for i in 1:n)
-  R, w = PolynomialRing(base, syms, ordering=ord)
+  R, w = polynomial_ring(base, syms, ordering=ord)
   AˣX = ChRing(R, repeat([1], n))
   if typ == 'B'
     rels = [sum(prod(w[i]^2 for i in c) for c in combinations(n, k)) for k in 1:n]

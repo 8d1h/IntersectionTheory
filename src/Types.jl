@@ -309,7 +309,7 @@ function add_vars(R::ChRing, vars::Vector{Pair{Int, String}}; w::Vector{Int}=Int
   if length(w) == 0 w = repeat([1], n) end
   @assert length(w) == n
   ord = prod_ordering ? ordering_dp(n) * R.R.ord : :degrevlex
-  Rx, x = PolynomialRing(base, syms, ordering=ord)
+  Rx, x = polynomial_ring(base, syms, ordering=ord)
   toRx = Singular.AlgebraHomomorphism(R.R, Rx, x[n+1:end])
   isdefined(R, :I) && return ChRing(Rx, vcat(w, R.w), Ideal(Rx, toRx.(gens(R.I))))
   return ChRing(Rx, vcat(w, R.w))
